@@ -1,3 +1,4 @@
+<img width="1736" height="346" alt="CleanShot 2026-11-11 at 19 17 48@2x" src="https://github.com/user-attachments/assets/e9d9d347-f519-4b24-9168-86d097a9b193" />
 
 # Fujiang Pojia (Armor Break)
 
