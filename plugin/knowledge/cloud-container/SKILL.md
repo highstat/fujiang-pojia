@@ -1,36 +1,36 @@
 ---
 name: kb-cloud-container
-description: CVE/PoC 知识库 · 云原生 / 虚拟化 / 中间件：runc(2024-21626)、cgroups(2022-0492)、Docker API 2375、Redis 未授权、Nacos(2021-29441)、vCenter 上传(2021-21972)、Workspace ONE SSTI(2022-22954)。每条都有对应 PoC；公开资料整理，verified=false。
+description: CVE/PoC knowledge base · cloud-native / virtualization / middleware: runc (2024-21626), cgroups (2022-0492), Docker API 2375, unauthenticated Redis, Nacos (2021-29441), vCenter upload (2021-21972), Workspace ONE SSTI (2022-22954). Each entry has a matching PoC; compiled from public sources, verified=false.
 verified: false
-sources: 公开资料整理（CVE 公告 / 公开分析 / 业务逻辑类；出处见各条参考）
+sources: Compiled from public sources (CVE advisories / public analyses / business-logic issues; see each entry's references)
 ---
 
-# 云 / 容器 / 中间件（14 条）
-> 条目为公开资料整理（出处见文末「参考」），`利用步骤` 属待验证假设；出报告前按目标版本自验并把 `verified` 置为 true。
+# Cloud / Containers / Middleware (14 entries)
+> Entries are compiled from public sources (see "References" at the end); `Exploitation steps` are unverified hypotheses. Before reporting, validate against the target version and set `verified` to true.
 
-判据永远是"**这个服务能不能被直连**"。博彩/跑分那类站点特别常见的三件套：`bucket` 公开可列（证件照、充值凭证）、`3306/27017` 弱口令暴露、`Redis` 裸奔。它们比任何 CVE 都更值钱。
+The criterion is always "**can this service be reached directly?**" Three things are especially common on gambling / payment-processing sites: a publicly listable `bucket` (ID photos, deposit receipts), `3306/27017` exposed with weak credentials, and a wide-open `Redis`. They are worth more than any CVE.
 
-## 条目
+## Entries
 
-| 文件 | 漏洞 | 严重度 | 入口 |
+| File | Vulnerability | Severity | Entry |
 |---|---|---|---|
-| `cve-2019-7238-nexus-rce.md` | Nexus Repository 未授权 RCE（CVE-2019-7238） | critical | POST /service/extdirect 的 EL 注入 |
-| `cve-2019-9193-postgres.md` | PostgreSQL COPY PROGRAM 命令执行（CVE-2019-9193） | high | COPY ... TO PROGRAM |
-| `cve-2021-21972-vcenter-upload.md` | vCenter Server 未授权上传 → RCE（vROPS 插件） | critical | POST /ui/vropspluginui/rest/services/uploadova |
-| `cve-2021-29441-nacos.md` | Nacos 认证绕过（User-Agent 白名单） | critical | - |
-| `cve-2021-43798-grafana-file-read.md` | Grafana 插件路径穿越任意文件读（CVE-2021-43798） | high | /public/plugins/<plugin>/../../../../etc/passwd |
-| `cve-2022-0492-cgroup-release-agent.md` | cgroups release_agent 容器逃逸 | high | 挂 cgroup v1 写 release_agent |
-| `cve-2022-22954-workspace-one-ssti.md` | VMware Workspace ONE Access 模板注入 RCE | critical | /catalog-portal/ui/oauth/verify?deviceUdid= |
-| `cve-2023-27532-veeam-credential-dump.md` | Veeam Backup 凭据泄露（CVE-2023-27532） | high | 9401 Backup Service 回显配置库凭据 |
-| `cve-2024-21626-runc-leaky-vessels.md` | runc 文件描述符泄露逃逸（Leaky Vessels） | critical | WORKDIR /proc/self/fd/N 拿到宿主 fd |
-| `cve-2024-37085-esxi-auth-bypass.md` | VMware ESXi 认证绕过 → hypervisor 失守（CVE-2024-37085） | critical | AD 里新建 "ESX Admins" 组 → 自动获得 ESXi 管理权 |
-| `cve-2024-40711-veeam-rce.md` | Veeam Backup 未认证 RCE（CVE-2024-40711） | critical | 9419 控制台凭据反序列化 |
-| `docker-api-2375.md` | Docker Remote API 未授权（直接拿宿主） | critical | - |
-| `mongodb-unauth.md` | MongoDB 未授权访问（直接拖库） | critical | mongod 无 auth 且对外开放 |
-| `redis-unauth.md` | Redis 未授权（写文件 / 模块加载 / 主从复制） | critical | - |
+| `cve-2019-7238-nexus-rce.md` | Nexus Repository unauthenticated RCE (CVE-2019-7238) | critical | EL injection in POST /service/extdirect |
+| `cve-2019-9193-postgres.md` | PostgreSQL COPY PROGRAM command execution (CVE-2019-9193) | high | COPY ... TO PROGRAM |
+| `cve-2021-21972-vcenter-upload.md` | vCenter Server unauthenticated upload → RCE (vROPS plugin) | critical | POST /ui/vropspluginui/rest/services/uploadova |
+| `cve-2021-29441-nacos.md` | Nacos authentication bypass (User-Agent allowlist) | critical | - |
+| `cve-2021-43798-grafana-file-read.md` | Grafana plugin path traversal arbitrary file read (CVE-2021-43798) | high | /public/plugins/<plugin>/../../../../etc/passwd |
+| `cve-2022-0492-cgroup-release-agent.md` | cgroups release_agent container escape | high | Mount cgroup v1 and write release_agent |
+| `cve-2022-22954-workspace-one-ssti.md` | VMware Workspace ONE Access template injection RCE | critical | /catalog-portal/ui/oauth/verify?deviceUdid= |
+| `cve-2023-27532-veeam-credential-dump.md` | Veeam Backup credential leak (CVE-2023-27532) | high | 9401 Backup Service returns configuration database credentials |
+| `cve-2024-21626-runc-leaky-vessels.md` | runc file descriptor leak escape (Leaky Vessels) | critical | WORKDIR /proc/self/fd/N yields a host fd |
+| `cve-2024-37085-esxi-auth-bypass.md` | VMware ESXi authentication bypass → hypervisor compromise (CVE-2024-37085) | critical | Create an "ESX Admins" group in AD → automatically gain ESXi admin rights |
+| `cve-2024-40711-veeam-rce.md` | Veeam Backup unauthenticated RCE (CVE-2024-40711) | critical | Credential deserialization in the 9419 console |
+| `docker-api-2375.md` | Docker Remote API unauthenticated (take the host directly) | critical | - |
+| `mongodb-unauth.md` | MongoDB unauthenticated access (dump the database directly) | critical | mongod has no auth and is exposed |
+| `redis-unauth.md` | Redis unauthenticated (file write / module load / master-slave replication) | critical | - |
 
-## 用这一页的方法
+## How to use this page
 
-- 从**前端资源**开始收集：JS 里的图片域名、`config.js` 的 `ossUrl`、下载链接的 `?Expires=` 签名 → 反推 bucket 名。
-- 对象存储只列举、只取 1 个对象做证据；DB 只取 `select 1` 与一行样例，别拖库。
-- 拿到 DB 后优先看"会员/订单/提现/代理"四张表，那是这类目标的全部价值。
+- Start collecting from **frontend assets**: image domains in JS, `ossUrl` in `config.js`, `?Expires=` signatures in download links → infer bucket names.
+- For object storage, only list and fetch 1 object as evidence; for databases, only run `select 1` and pull one sample row — do not dump the database.
+- Once you have DB access, look first at the four tables "members / orders / withdrawals / agents" — that is the entire value of these targets.

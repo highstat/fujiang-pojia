@@ -1,44 +1,44 @@
 ---
-title: 指纹到漏洞的匹配流程
-cve: 无
+title: Fingerprint-to-vulnerability matching workflow
+cve: None
 severity: info
 cvss: 0
-product: 方法论
-ports: 任意
+product: Methodology
+ports: Any
 keywords: fingerprint, recon, mapping, version
 verified: false
-sources: 公开资料整理（业务逻辑 / 实现 / 配置缺陷类，无 CVE；出处见文末参考）
+sources: Compiled from public sources (business-logic / implementation / configuration flaws without CVEs; see references below)
 ---
 
-## 1. 先分资产类型（决定后面查哪一类）
+## 1. Classify the asset first (determines which category to consult)
 
-| 观测 | 资产类型 | 首查分类 |
+| Observation | Asset type | First category |
 |---|---|---|
-| 7001 / `WebLogic` | Java 中间件 | `kb-java-deser` |
+| 7001 / `WebLogic` | Java middleware | `kb-java-deser` |
 | `X-Confluence-*` / `X-Jenkins` / `GitLab` | Java Web / CI | `kb-java-web` |
-| 8090/8111/8983 且 Java 技术栈 | 同上 | `kb-java-web` |
-| `GlobalProtect` / `Citrix Gateway` / `FortiGate` / `BIG-IP` | 边界设备 | `kb-edge-device` |
+| 8090/8111/8983 and a Java stack | Same as above | `kb-java-web` |
+| `GlobalProtect` / `Citrix Gateway` / `FortiGate` / `BIG-IP` | Edge device | `kb-edge-device` |
 | `/owa/` `/ecp/` `/autodiscover/` | Exchange | `kb-exchange-ad` |
-| 445 + 域控 / 88 开放 | AD | `kb-exchange-ad` |
-| `X-Powered-By: PHP` / Drupal / ThinkPHP | PHP 站点 | `kb-web-cms` |
-| 低权 shell / 容器内 | 提权 | `kb-linux-priv` |
-| 2375 / 6379 / 5432 / 8848 / 6443 / 10250 | 云原生与中间件 | `kb-cloud-container` |
+| 445 + domain controller / 88 open | AD | `kb-exchange-ad` |
+| `X-Powered-By: PHP` / Drupal / ThinkPHP | PHP site | `kb-web-cms` |
+| Low-privilege shell / inside a container | Privilege escalation | `kb-linux-priv` |
+| 2375 / 6379 / 5432 / 8848 / 6443 / 10250 | Cloud-native and middleware | `kb-cloud-container` |
 
-## 2. 取版本（按可靠性排序）
+## 2. Obtain the version (ordered by reliability)
 
-1. 应用自报：`/version`、`/api/v1/version`、`X-Jenkins`、`X-OWA-Version`、`X-FEServer`、`X-Generator`、`Server`。
-2. 静态资源指纹：`/static/js/...` 的 hash、`CHANGELOG.txt`、`/core/CHANGELOG.txt`、`/help`、`/login.action` 页脚。
-3. 报错差异：非法参数触发的堆栈、`Whitelabel Error Page`、`Ignition` 页面。
-4. 端口/协议：`nmap -sV` 的 banner（对自研中间件常常不准，只作参考）。
+1. Application-reported: `/version`, `/api/v1/version`, `X-Jenkins`, `X-OWA-Version`, `X-FEServer`, `X-Generator`, `Server`.
+2. Static-resource fingerprints: hashes under `/static/js/...`, `CHANGELOG.txt`, `/core/CHANGELOG.txt`, `/help`, `/login.action` footers.
+3. Error differences: stacks triggered by invalid parameters, `Whitelabel Error Page`, `Ignition` pages.
+4. Ports/protocols: `nmap -sV` banners (often inaccurate for custom middleware; reference only).
 
-## 3. 映射到条目
+## 3. Map to entries
 
-- 用 `name` 里的产品名 + `versions` 区间做核对；区间不覆盖就换条目或记为「未见该组件」。
-- 同一资产可能命中多条（如 Exchange 2019 同时有 ProxyLogon / ProxyShell / 0-day 面），按**影响面 × 可验证性**排序。
+- Cross-check the product in `name` and the `versions` range; if the range does not cover the target, select another entry or record "component not observed".
+- One asset may match several entries (for example, Exchange 2019 may expose ProxyLogon / ProxyShell / zero-day surfaces); rank by **impact × verifiability**.
 
-## 4. 常见误判
+## 4. Common misinterpretations
 
-- 反代/网关改写响应头 → 版本看起来是网关的。
-- 容器镜像版本 ≠ 应用版本（`Server: nginx` 后面可能是 Tomcat）。
-- WAF 返回的 403/200 空页被当成"漏洞不存在"；用不同路径/参数再验一次。
-- CDN 缓存把 `/version` 缓存成旧值。
+- Reverse proxies/gateways rewrite response headers → the apparent version belongs to the gateway.
+- Container-image version ≠ application version (`Server: nginx` may hide Tomcat).
+- A WAF's 403/blank 200 response is mistaken for "not vulnerable"; verify again using a different path/parameter.
+- A CDN caches an outdated `/version` value.

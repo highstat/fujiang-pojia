@@ -14,7 +14,7 @@ const MAX_REA_TARBALL_BYTES = 128 * 1024 * 1024;
 const SKILL_NAME = 'fujiang-rea-reverse-engineer-anything';
 const SERVER_NAME = 'fujiang_rea';
 const CATALOG = Object.freeze({
-  id: 'rea', name: '逆向破解', projectName: 'Reverse Engineer Anything (REA)',
+  id: 'rea', name: 'Reverse Engineering', projectName: 'Reverse Engineer Anything (REA)',
   repositoryUrl: 'https://github.com/morluto/rea',
   installUrl: 'https://registry.npmjs.org/rea-agents/latest',
 });
@@ -39,9 +39,9 @@ function run(command, args, { cwd, signal, timeout = 600000 } = {}) {
     child.on('error', error => { spawnError = error; });
     child.on('close', code => {
       clearTimeout(timer);
-      if (timedOut) reject(new Error('下载或安装超时，请检查网络后重试。'));
+      if (timedOut) reject(new Error('Download or installation timed out. Check your network and retry.'));
       else if (spawnError) reject(spawnError);
-      else if (code !== 0) reject(new Error(`安装进程退出 (${code})：${output.trim().slice(-1400)}`));
+      else if (code !== 0) reject(new Error(`Installation process exited (${code}): ${output.trim().slice(-1400)}`));
       else resolve(output.trim());
     });
   });
@@ -70,10 +70,10 @@ async function findNode(signal) {
         path.join(process.env.APPDATA || '', 'npm/node_modules/npm/bin/npm-cli.js')];
       const npm = candidates.find(file => fs.existsSync(file));
       if (npm) compatible.push({ node, npm, score: major * 1000000 + minor * 1000 + patch });
-    } catch { if (signal?.aborted) throw new Error('操作已停止。'); }
+    } catch { if (signal?.aborted) throw new Error('Operation stopped.'); }
   }
   if (compatible.length) return compatible.sort((a, b) => b.score - a.score)[0];
-  throw new Error('没有找到可用的 Node.js 和 npm。请安装官方 Node.js（REA 当前要求 22.23.4、24.22.1 或更新的兼容版本）。');
+  throw new Error('No working Node.js and npm installation was found. Install official Node.js (REA currently requires 22.23.4, 24.22.1, or a newer compatible version).');
 }
 
 function writeJson(file, value) {
@@ -108,12 +108,12 @@ export function createSkillLibrary(ctx, options = {}) {
   let restored = false;
 
   function assertOwned(dir) {
-    if (!isInside(home, dir)) throw new Error('技能目录不在插件管理范围内。');
-    if (fs.lstatSync(dir).isSymbolicLink()) throw new Error('技能目录是链接，已停止清理以保护其他安装。');
+    if (!isInside(home, dir)) throw new Error('The skill directory is outside the area managed by this plugin.');
+    if (fs.lstatSync(dir).isSymbolicLink()) throw new Error('The skill directory is a link. Cleanup stopped to protect other installations.');
     const marker = readJson(path.join(dir, MARKER));
-    if (marker.owner !== OWNER) throw new Error('目录不属于本插件，已停止操作。');
+    if (marker.owner !== OWNER) throw new Error('This directory does not belong to the plugin. Operation stopped.');
     const realHome = fs.realpathSync(home);
-    if (!isInside(realHome, fs.realpathSync(dir))) throw new Error('技能目录实际位置不在插件管理范围内。');
+    if (!isInside(realHome, fs.realpathSync(dir))) throw new Error('The actual skill directory location is outside the area managed by this plugin.');
   }
   function ensureRoot() {
     fs.mkdirSync(home, { recursive: true });
@@ -128,9 +128,9 @@ export function createSkillLibrary(ctx, options = {}) {
     assertOwned(root);
     assertOwned(dir);
     const pkg = readJson(path.join(dir, 'node_modules/rea-agents/package.json'));
-    if (pkg.name !== 'rea-agents' || !/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(pkg.version)) throw new Error('REA 安装信息不完整，请删除后重新下载。');
+    if (pkg.name !== 'rea-agents' || !/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(pkg.version)) throw new Error('REA installation metadata is incomplete. Delete it and download again.');
     for (const file of ['scripts/rea.mjs', 'skills/reverse-engineer-anything/SKILL.md']) {
-      if (!fs.statSync(path.join(dir, 'node_modules/rea-agents', file)).isFile()) throw new Error('REA 安装文件缺失。');
+      if (!fs.statSync(path.join(dir, 'node_modules/rea-agents', file)).isFile()) throw new Error('REA installation files are missing.');
     }
     const require = createRequire(path.join(dir, 'package.json'));
     require.resolve('@deepseek-ai/dsh-mcp-client');
@@ -138,7 +138,7 @@ export function createSkillLibrary(ctx, options = {}) {
   }
   function removeOwned(dir) {
     assertOwned(root); assertOwned(dir);
-    if (path.dirname(dir) !== root) throw new Error('拒绝清理非托管技能目录。');
+    if (path.dirname(dir) !== root) throw new Error('Refusing to clean an unmanaged skill directory.');
     fs.rmSync(dir, { recursive: true, force: true });
   }
   const toolCount = () => {
@@ -163,22 +163,22 @@ export function createSkillLibrary(ctx, options = {}) {
   async function downloadTarball(metadata, destination, fetcher, signal) {
     const dist = metadata.dist;
     if (!dist || typeof dist.tarball !== 'string' || typeof dist.integrity !== 'string') {
-      throw new Error('官方安装源缺少包文件或完整性校验信息。');
+      throw new Error('The official installation source is missing the package file or integrity information.');
     }
     const url = new URL(dist.tarball);
     if (url.protocol !== 'https:' || url.hostname !== 'registry.npmjs.org'
       || !url.pathname.startsWith(`/rea-agents/-/rea-agents-${metadata.version}.`)) {
-      throw new Error('官方安装源返回了非预期的下载地址。');
+      throw new Error('The official installation source returned an unexpected download URL.');
     }
     const response = await fetcher(url.href, {
       signal: AbortSignal.any([signal, AbortSignal.timeout(10 * 60 * 1000)]), redirect: 'error',
     });
-    if (!response.ok || !response.body) throw new Error(`REA 安装包下载失败 (HTTP ${response.status})。`);
+    if (!response.ok || !response.body) throw new Error(`REA package download failed (HTTP ${response.status}).`);
     const totalHeader = Number(response.headers?.get?.('content-length'));
     const totalBytes = Number.isFinite(totalHeader) && totalHeader > 0 ? totalHeader : null;
-    if (totalBytes && totalBytes > MAX_REA_TARBALL_BYTES) throw new Error('REA 安装包超过允许的下载大小。');
+    if (totalBytes && totalBytes > MAX_REA_TARBALL_BYTES) throw new Error('The REA package exceeds the allowed download size.');
     const expectedIntegrity = dist.integrity.split(/\s+/).find(value => value.startsWith('sha512-'));
-    if (!expectedIntegrity) throw new Error('官方安装源缺少 SHA-512 完整性校验值。');
+    if (!expectedIntegrity) throw new Error('The official installation source is missing the SHA-512 integrity hash.');
     const hash = createHash('sha512');
     let receivedBytes = 0;
     const file = await fs.promises.open(destination, 'wx');
@@ -189,18 +189,18 @@ export function createSkillLibrary(ctx, options = {}) {
         await file.writeFile(buffer);
         hash.update(buffer);
         receivedBytes += buffer.length;
-        if (receivedBytes > MAX_REA_TARBALL_BYTES) throw new Error('REA 安装包超过允许的下载大小。');
+        if (receivedBytes > MAX_REA_TARBALL_BYTES) throw new Error('The REA package exceeds the allowed download size.');
         const percent = totalBytes ? Math.min(100, Math.floor(receivedBytes * 100 / totalBytes)) : null;
         progress = { stage: 'package', percent, receivedBytes, totalBytes };
         detail = totalBytes
-          ? `正在下载 REA 安装包 ${formatBytes(receivedBytes)} / ${formatBytes(totalBytes)}`
-          : `正在下载 REA 安装包 ${formatBytes(receivedBytes)}`;
+          ? `Downloading REA package ${formatBytes(receivedBytes)} / ${formatBytes(totalBytes)}`
+          : `Downloading REA package ${formatBytes(receivedBytes)}`;
       }
       await file.sync();
     } finally { await file.close(); }
-    if (totalBytes && receivedBytes !== totalBytes) throw new Error('REA 安装包下载长度不完整，请重试。');
+    if (totalBytes && receivedBytes !== totalBytes) throw new Error('The REA package download is incomplete. Please retry.');
     if (hash.digest('base64') !== expectedIntegrity.slice('sha512-'.length)) {
-      throw new Error('REA 安装包完整性校验失败，临时文件已清理。');
+      throw new Error('REA package integrity verification failed. Temporary files have been cleaned up.');
     }
     progress = { stage: 'package', percent: 100, receivedBytes, totalBytes };
   }
@@ -213,11 +213,11 @@ export function createSkillLibrary(ctx, options = {}) {
 
   async function activate() {
     if (active) return;
-    if (closed) throw new Error('插件已停止，请重启 DSH。');
+    if (closed) throw new Error('The plugin has stopped. Restart DSH.');
     version = verifyInstallation();
-    if (!runtimeCtx) throw new Error('当前 DSH 尚未提供技能和工具服务，请完整重启官方 Desktop 后重试。');
+    if (!runtimeCtx) throw new Error('This DSH instance has not provided skill and tool services yet. Fully restart the official Desktop app and retry.');
     const launch = readJson(path.join(installDir, 'launch.json'));
-    if (!path.isAbsolute(launch.node) || !fs.existsSync(launch.node)) throw new Error('Node.js 路径已失效，请删除后重新下载安装。');
+    if (!path.isAbsolute(launch.node) || !fs.existsSync(launch.node)) throw new Error('The Node.js path is no longer valid. Delete the installation, then download and install again.');
     const require = createRequire(path.join(installDir, 'package.json'));
     let mcpClient;
     try { mcpClient = await ctx.get('loader')?.import('@deepseek-ai/dsh-mcp-client'); } catch { /* use the owned fallback */ }
@@ -235,10 +235,10 @@ export function createSkillLibrary(ctx, options = {}) {
         reconnect: { enabled: true, initialDelayMs: 1000, maxDelayMs: 30000, maxAttempts: 5 },
       });
       await mcpFiber;
-      if (closed) throw new Error('插件已停止。');
-      if (toolCount() === 0) throw new Error('REA 未注册任何工具，请重试或重新下载安装。');
+      if (closed) throw new Error('The plugin has stopped.');
+      if (toolCount() === 0) throw new Error('REA did not register any tools. Retry or download and install again.');
       skillDispose = runtimeCtx.skills.register({
-        name: SKILL_NAME, description: '使用 REA 逆向分析原生程序、Electron/JavaScript、软件包、固件和浏览器目标。',
+        name: SKILL_NAME, description: 'Use REA to reverse engineer native programs, Electron/JavaScript, packages, firmware, and browser targets.',
         source: 'runtime', provider: 'fujiang-skill-library', path: skillPath, content,
         resourceBase: { kind: 'directory', path: skillDir },
         invocation: { modelInvocable: true, userInvocable: true },
@@ -251,17 +251,17 @@ export function createSkillLibrary(ctx, options = {}) {
 
   async function download() {
     ensureRoot();
-    if (fs.existsSync(installDir)) throw new Error('已有安装目录，请先删除后重新下载。');
+    if (fs.existsSync(installDir)) throw new Error('An installation directory already exists. Delete it before downloading again.');
     const signal = operationSignal();
     progress = { stage: 'metadata', percent: null, receivedBytes: null, totalBytes: null };
-    detail = '正在获取官方安装源…';
+    detail = 'Fetching the official installation source…';
     const fetcher = options.fetch || globalThis.fetch;
     const response = await fetcher(CATALOG.installUrl, { signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]), redirect: 'error' });
-    if (!response.ok) throw new Error(`无法读取官方安装链接 (HTTP ${response.status})。`);
+    if (!response.ok) throw new Error(`Unable to read the official installation link (HTTP ${response.status}).`);
     const metadataText = await response.text();
-    if (metadataText.length > 1024 * 1024) throw new Error('安装源响应过大。');
+    if (metadataText.length > 1024 * 1024) throw new Error('The installation source response is too large.');
     const metadata = JSON.parse(metadataText);
-    if (metadata.name !== 'rea-agents' || !/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(metadata.version)) throw new Error('官方安装源返回了无效版本。');
+    if (metadata.name !== 'rea-agents' || !/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(metadata.version)) throw new Error('The official installation source returned an invalid version.');
     const launch = await (options.findNode || findNode)(signal);
     const stage = path.join(root, '.staging-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8));
     fs.mkdirSync(stage);
@@ -271,11 +271,11 @@ export function createSkillLibrary(ctx, options = {}) {
       const tarballPath = path.join(stage, 'rea-agents.tgz');
       await downloadTarball(metadata, tarballPath, fetcher, signal);
       progress = { stage: 'dependencies', percent: null, receivedBytes: null, totalBytes: null };
-      detail = `REA ${metadata.version} 已下载，正在安装依赖…`;
+      detail = `REA ${metadata.version} downloaded. Installing dependencies…`;
       await (options.run || run)(launch.node, [launch.npm, 'install', '--ignore-scripts', '--no-audit', '--no-fund',
         '--omit=dev', '--engine-strict', '--registry=https://registry.npmjs.org', '--no-save', '--package-lock=false',
         tarballPath, `@deepseek-ai/dsh-mcp-client@${MCP_VERSION}`], { cwd: stage, signal });
-      if (closed) throw new Error('插件已停止。');
+      if (closed) throw new Error('The plugin has stopped.');
       verifyInstallation(stage);
       fs.unlinkSync(tarballPath);
       writeJson(path.join(stage, 'launch.json'), { node: launch.node });
@@ -284,13 +284,13 @@ export function createSkillLibrary(ctx, options = {}) {
       version = metadata.version;
       canCancel = false;
       progress = { stage: 'registering', percent: null, receivedBytes: null, totalBytes: null };
-      detail = '下载完成，正在注册技能和工具…';
+      detail = 'Download complete. Registering skills and tools…';
     } finally { if (fs.existsSync(stage)) removeOwned(stage); }
   }
 
   function start(action, task) {
-    if (closed) return { status: 503, body: { ...snapshot(), ok: false, message: '插件已停止，请重启。' } };
-    if (busy) return { status: 409, body: { ...snapshot(), ok: false, message: '正在处理，请等待当前操作完成。' } };
+    if (closed) return { status: 503, body: { ...snapshot(), ok: false, message: 'The plugin has stopped. Please restart.' } };
+    if (busy) return { status: 409, body: { ...snapshot(), ok: false, message: 'Processing. Wait for the current operation to finish.' } };
     busy = true; error = null; detail = null; cancelRequested = false;
     operationController = new AbortController();
     progress = action === 'install' ? { stage: 'metadata', percent: null, receivedBytes: null, totalBytes: null } : null;
@@ -298,12 +298,12 @@ export function createSkillLibrary(ctx, options = {}) {
     phase = { install: 'installing', enable: 'enabling', disable: 'disabling', delete: 'deleting' }[action];
     operation = Promise.resolve().then(task).catch(cause => {
       if (cancelRequested && !closed) {
-        error = null; phase = 'cancelled'; detail = '下载已取消，临时文件已清理。';
+        error = null; phase = 'cancelled'; detail = 'Download cancelled. Temporary files have been cleaned up.';
         progress = { ...(progress || {}), stage: 'cancelled' };
         state.enabled = false;
       } else {
         error = messageOf(cause); phase = 'error';
-        try { ctx.logger?.warn?.('REA 技能库：' + error); } catch { /* optional logger */ }
+        try { ctx.logger?.warn?.('REA skill library: ' + error); } catch { /* optional logger */ }
       }
     }).finally(() => {
       busy = false;
@@ -318,13 +318,13 @@ export function createSkillLibrary(ctx, options = {}) {
   function action(body) {
     if (!body || Array.isArray(body) || body.id !== 'rea' || !['install', 'enable', 'disable', 'delete', 'cancel'].includes(body.action)
       || Object.keys(body).some(key => !['id', 'action'].includes(key))) {
-      return { status: 400, body: { ok: false, message: '不支持的技能或操作。' } };
+      return { status: 400, body: { ok: false, message: 'Unsupported skill or operation.' } };
     }
     if (body.action === 'cancel') {
-      if (!busy || !canCancel || !operationController) return { status: 409, body: { ...snapshot(), ok: false, message: '当前阶段无法取消。' } };
+      if (!busy || !canCancel || !operationController) return { status: 409, body: { ...snapshot(), ok: false, message: 'Cannot cancel at the current stage.' } };
       cancelRequested = true; canCancel = false; phase = 'cancelling';
       progress = { ...(progress || {}), stage: 'cancelling' };
-      detail = '正在停止下载并清理临时文件…';
+      detail = 'Stopping the download and cleaning up temporary files…';
       operationController.abort(new Error('Cancelled by user'));
       return { status: 202, body: snapshot() };
     }
@@ -335,7 +335,7 @@ export function createSkillLibrary(ctx, options = {}) {
           canCancel = false;
           state.enabled = true; save(); await activate(); break;
         case 'enable':
-          if (!installed) throw new Error('请先下载安装 REA。');
+          if (!installed) throw new Error('Download and install REA first.');
           state.enabled = true; save(); await activate(); break;
         case 'disable':
           state.enabled = false; save(); await deactivate(); phase = installed ? 'disabled' : 'not_installed'; break;

@@ -1,23 +1,24 @@
-// dsh-prompt-custom — 知识库（内置 CVE / PoC 语料）
+// dsh-prompt-custom — knowledge base (bundled CVE / PoC content)
 //
-// 与 skills.js（REA，按需下载）、aboutsecurity.js（按需下载）不同，本库的语料
-// **随插件分发**：plugin/knowledge/ 下的 markdown 就是这个插件自己的文件。
-// 因此这里没有下载、没有解压、没有 npm、没有网络 —— 唯一的磁盘动作是读写
-// $DSH_HOME/fujiang-skills/knowledge-state.json 里的一个布尔开关。
+// Unlike skills.js (REA, downloaded on demand) and aboutsecurity.js (downloaded on demand),
+// this content **ships with the plugin**: markdown under plugin/knowledge/ belongs to the plugin.
+// No downloads, extraction, npm, or network access; the only disk operation is reading/writing
+// a boolean toggle in $DSH_HOME/fujiang-skills/knowledge-state.json.
 //
-// 为什么按「分类」注册成多个 skill 而不是一条大 skill：
-//   模型看到的是每个 skill 的 name+description（<available_skills> 目录），
-//   正文只在该 skill 被调用时才注入。按分类切分后，目录里每条描述都能精确
-//   指路（Java 反序列化 / 边界设备 / Exchange+AD / Windows+AD / CMS / 本地
-//   提权 / 云与容器），既省上下文，又让模型在一次「这是什么漏洞」里直接命中。
+// Why register multiple category skills instead of one large skill:
+//   The model sees each skill's name+description in the <available_skills> catalog;
+//   its body is injected only when invoked. Categories let each description direct the model
+//   precisely (Java deserialization / edge devices / Exchange+AD / Windows+AD / CMS / local
+//   privilege escalation / cloud and containers), saving context and finding the right entry
+//   in a single "what vulnerability is this?" query.
 //
-// 语料协议的单一来源是每个分类目录下的 SKILL.md 的 frontmatter：
+// The single source of truth for the content protocol is SKILL.md frontmatter in each category directory:
 //   ---
 //   name: kb-java-deser
 //   description: ...
 //   ---
-// 正文靠 get() 现读，所以改语料不需要重启宿主进程（下一次 list/get 就更新），
-// 只有「开关」与「分类增删」需要重启。
+// get() reads the body fresh, so content edits need no host restart (the next list/get picks them up).
+// Only toggling and adding/removing categories require a restart.
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -28,18 +29,18 @@ const MARKER = '.fujiang-owner.json';
 const PROVIDER = 'fujiang-knowledge';
 const VERSION = '1.3.1'
 
-/** 与 skills.js / aboutsecurity.js 同款目录主权标记（同一根目录，同一个 owner）。 */
+/** Same directory ownership marker as skills.js / aboutsecurity.js (same root and owner). */
 const CATALOG = Object.freeze({
   id: 'knowledge',
-  name: '知识库',
-  projectName: 'CVE / PoC 漏洞知识库',
-  license: '随插件分发，仅本地',
+  name: 'Knowledge Base',
+  projectName: 'CVE / PoC Vulnerability Knowledge Base',
+  license: 'Bundled with the plugin; local only',
 });
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_CORPUS = path.join(moduleDir, '..', 'knowledge');
 
-/** 分类目录 → skill 名；skill 名必须是小写连字符（内核的 skill 名约束）。 */
+/** Category directory → skill name; names must use lowercase and hyphens (core skill-name constraint). */
 const CATEGORIES = Object.freeze([
   { dir: 'java-deser', fallback: 'kb-java-deser' },
   { dir: 'java-web', fallback: 'kb-java-web' },
@@ -65,7 +66,7 @@ function writeJson(file, value) {
   fs.renameSync(temp, file);
 }
 
-/** frontmatter 只认 `---` 包起来的平坦 key: value；值不做 YAML 语义展开。 */
+/** Parse only flat key: value frontmatter enclosed in `---`; do not interpret values as YAML. */
 const FRONTMATTER = /^(?:\uFEFF)?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
 
 function unquote(value) {
@@ -97,7 +98,7 @@ export function createKnowledgeLibrary(ctx, options = {}) {
   const stateFile = path.join(root, 'knowledge-state.json');
   const corpus = path.resolve(options.corpus || DEFAULT_CORPUS);
 
-  // 默认开启：语料是插件自带的本地文件，不联网、不下载，开箱即可被模型读到。
+  // Enabled by default: bundled local files need no network or downloads and are immediately readable by the model.
   let state = { enabled: true };
   let active = false;
   let phase = 'disabled';
@@ -110,9 +111,9 @@ export function createKnowledgeLibrary(ctx, options = {}) {
   let cache = null;
 
   function assertOwned(dir) {
-    if (!isInside(home, dir)) throw new Error('技能目录不在插件管理范围内。');
-    if (fs.lstatSync(dir).isSymbolicLink()) throw new Error('技能目录是链接，已停止操作以保护其他安装。');
-    if (readJson(path.join(dir, MARKER)).owner !== OWNER) throw new Error('目录不属于本插件，已停止操作。');
+    if (!isInside(home, dir)) throw new Error('The skill directory is outside the area managed by this plugin.');
+    if (fs.lstatSync(dir).isSymbolicLink()) throw new Error('The skill directory is a link. Operation stopped to protect other installations.');
+    if (readJson(path.join(dir, MARKER)).owner !== OWNER) throw new Error('This directory does not belong to the plugin. Operation stopped.');
   }
   function ensureRoot() {
     fs.mkdirSync(home, { recursive: true });
@@ -124,15 +125,15 @@ export function createKnowledgeLibrary(ctx, options = {}) {
   }
   function save() { ensureRoot(); writeJson(stateFile, { schema: 1, enabled: state.enabled === true }); }
 
-  /** 读一个分类：SKILL.md 的 frontmatter 决定 skill 名与描述，正文原样成为 content。 */
+  /** Read a category: SKILL.md frontmatter defines its skill name and description; its unmodified body becomes content. */
   function readCategory(spec) {
     const dir = path.join(corpus, spec.dir);
-    if (!isInside(corpus, dir)) throw new Error('分类目录越界：' + spec.dir);
+    if (!isInside(corpus, dir)) throw new Error('Category directory is out of bounds: ' + spec.dir);
     const file = path.join(dir, 'SKILL.md');
     const markdown = fs.readFileSync(file, 'utf8');
     const { fields, body } = parseFrontmatter(markdown);
     const name = fields.name || spec.fallback;
-    if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(name)) throw new Error('知识库 skill 名不合规：' + name);
+    if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(name)) throw new Error('Invalid knowledge base skill name: ' + name);
     const entries = fs.readdirSync(dir)
       .filter((item) => item.endsWith('.md') && item.toLowerCase() !== 'skill.md')
       .sort();
@@ -159,13 +160,13 @@ export function createKnowledgeLibrary(ctx, options = {}) {
 
   const entryCount = () => categories().reduce((total, item) => total + item.entries.length, 0);
 
-  /** 给设置页用的分类目录：分类标题 + 逐条 title/severity/entry（只读自 frontmatter）。 */
+  /** Settings category catalog: category titles + per-item title/severity/entry (read only from frontmatter). */
   const catalog = () => categories().map((item) => {
     let title = item.name;
     try {
       const match = /^#\s+(.+)$/m.exec(fs.readFileSync(item.file, 'utf8'));
       if (match) title = match[1].trim();
-    } catch { /* 读不到就用 skill 名 */ }
+    } catch { /* Fall back to the skill name if unreadable. */ }
     const entries = item.entries.map((file) => {
       try {
         const { fields } = parseFrontmatter(fs.readFileSync(path.join(item.dir, file), 'utf8'));
@@ -195,7 +196,7 @@ export function createKnowledgeLibrary(ctx, options = {}) {
         tools: 0,
         canCancel: false,
         progress: null,
-        message: error || (skillCount ? null : '知识库语料缺失，请重新安装插件。'),
+        message: error || (skillCount ? null : 'Knowledge base content is missing. Reinstall the plugin.'),
       }],
     };
   };
@@ -206,14 +207,14 @@ export function createKnowledgeLibrary(ctx, options = {}) {
     phase = state.enabled ? 'disabled' : 'disabled';
   }
 
-  /** 注册一个只读 provider：list() 给目录，get() 现读正文。语料改了立刻可见。 */
+  /** Register a read-only provider: list() supplies the catalog; get() reads bodies fresh, making content edits visible immediately. */
   function activate() {
     if (active) return;
-    if (closed) throw new Error('插件已停止，请重启 DSH。');
-    if (!runtimeCtx) throw new Error('当前 DSH 尚未提供技能服务，请完整重启官方 Desktop 后重试。');
-    cache = null;                       // 开关一次 = 重新读一遍分类与描述
+    if (closed) throw new Error('The plugin has stopped. Restart DSH.');
+    if (!runtimeCtx) throw new Error('This DSH instance has not provided the skill service yet. Fully restart the official Desktop app and retry.');
+    cache = null;                       // Each toggle rereads categories and descriptions.
     const list = categories();
-    if (!list.length) throw new Error('知识库语料缺失，请重新安装插件。');
+    if (!list.length) throw new Error('Knowledge base content is missing. Reinstall the plugin.');
     providerDispose = runtimeCtx.skills.registerProvider(() => ({
       name: PROVIDER,
       async list() {
@@ -232,23 +233,23 @@ export function createKnowledgeLibrary(ctx, options = {}) {
       },
       async get(candidate) {
         const item = candidate?.locator || list.find((entry) => entry.name === candidate?.name);
-        if (!item) throw new Error('知识库条目已失效，请重新开关一次知识库。');
+        if (!item) throw new Error('This knowledge base entry is no longer valid. Toggle the knowledge base off and on again.');
         const markdown = fs.readFileSync(item.file, 'utf8');
         const { body } = parseFrontmatter(markdown);
-        // 条目清单**每次现读**：往目录里加一条 md 不需要重开关，下一次调用就能看见。
+        // Read the entry list **fresh every time**: newly added md files appear on the next call without toggling.
         let entries = item.entries;
         try {
           entries = fs.readdirSync(item.dir)
             .filter((file) => file.endsWith('.md') && file.toLowerCase() !== 'skill.md')
             .sort();
-        } catch { /* 目录消失时退回注册时的清单 */ }
+        } catch { /* If the directory disappears, fall back to the list from registration. */ }
         const index = entries.map((file) => '- `' + file + '`').join('\n');
         const content = [body.trim(), '', '---', '',
-          '语料目录：`' + item.dir + '`',
+          'Content directory: `' + item.dir + '`',
           '',
-          '逐条详情（指纹 / 前置条件 / PoC / 利用步骤 / 修复）都在同目录，直接用 read 工具读取：',
+          'Individual entry details (fingerprints / prerequisites / PoC / exploitation steps / remediation) are in the same directory; read them directly with the read tool:',
           '',
-          index || '（本分类暂无条目）',
+          index || '(No entries in this category yet)',
         ].join('\n');
         return {
           name: item.name,
@@ -268,14 +269,14 @@ export function createKnowledgeLibrary(ctx, options = {}) {
   }
 
   function start(action, task) {
-    if (closed) return { status: 503, body: { ...snapshot(), ok: false, message: '插件已停止，请重启。' } };
-    if (busy) return { status: 409, body: { ...snapshot(), ok: false, message: '正在处理，请等待当前操作完成。' } };
+    if (closed) return { status: 503, body: { ...snapshot(), ok: false, message: 'The plugin has stopped. Please restart.' } };
+    if (busy) return { status: 409, body: { ...snapshot(), ok: false, message: 'Processing. Wait for the current operation to finish.' } };
     busy = true; error = null;
     phase = { enable: 'enabling', disable: 'disabling' }[action] || phase;
     Promise.resolve().then(task).catch((cause) => {
       error = messageOf(cause);
       phase = 'error';
-      try { ctx.logger?.warn?.('知识库：' + error); } catch { /* optional logger */ }
+      try { ctx.logger?.warn?.('Knowledge base: ' + error); } catch { /* optional logger */ }
     }).finally(() => {
       busy = false;
       if (phase !== 'error') phase = active ? 'ready' : 'disabled';
@@ -287,7 +288,7 @@ export function createKnowledgeLibrary(ctx, options = {}) {
     if (!body || Array.isArray(body) || body.id !== CATALOG.id
       || !['enable', 'disable'].includes(body.action)
       || Object.keys(body).some((key) => !['id', 'action'].includes(key))) {
-      return { status: 400, body: { ok: false, message: '不支持的知识库操作。' } };
+      return { status: 400, body: { ok: false, message: 'Unsupported knowledge base operation.' } };
     }
     return start(body.action, async () => {
       if (body.action === 'enable') {
@@ -310,7 +311,7 @@ export function createKnowledgeLibrary(ctx, options = {}) {
         const saved = readJson(stateFile);
         state = { enabled: saved?.enabled !== false };
       }
-      if (!categories().length) { error = '知识库语料缺失，请重新安装插件。'; phase = 'error'; return; }
+      if (!categories().length) { error = 'Knowledge base content is missing. Reinstall the plugin.'; phase = 'error'; return; }
       phase = 'disabled';
       if (state.enabled && runtimeCtx) start('enable', async () => { activate(); });
     } catch (cause) {

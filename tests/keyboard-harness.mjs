@@ -54,7 +54,7 @@ export function mountDisclaimer(componentSource, targetWindow, { render = () => 
   }
   function findAccept(node) {
     if (!node || typeof node !== 'object') return undefined;
-    if (node.type === 'button' && node.props.children === '同意并遵守') return node.props.onClick;
+    if (node.type === 'button' && node.props.children === 'Agree and Comply') return node.props.onClick;
     const children = Array.isArray(node.props?.children) ? node.props.children : [node.props?.children];
     for (const child of children) { const found = findAccept(child); if (found) return found; }
   }

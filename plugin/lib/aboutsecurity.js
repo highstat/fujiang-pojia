@@ -10,7 +10,7 @@ const MAX_ARCHIVE_BYTES = 64 * 1024 * 1024;
 const MAX_SKILLS = 1000;
 const MAX_SKILL_BYTES = 2 * 1024 * 1024;
 const CATALOG = Object.freeze({
-  id: 'aboutsecurity', name: '渗透测试', projectName: 'WgpSec AboutSecurity',
+  id: 'aboutsecurity', name: 'Penetration Testing', projectName: 'WgpSec AboutSecurity',
   repositoryUrl: 'https://github.com/wgpsec/AboutSecurity',
   installUrl: 'https://codeload.github.com/wgpsec/AboutSecurity/zip/refs/heads/master',
 });
@@ -40,9 +40,9 @@ function run(command, args, { cwd, signal, timeout = 10 * 60 * 1000 } = {}) {
     child.on('error', error => { spawnError = error; });
     child.on('close', code => {
       clearTimeout(timer);
-      if (timedOut) reject(new Error('技能库解压超时，请重试。'));
+      if (timedOut) reject(new Error('Skill library extraction timed out. Please retry.'));
       else if (spawnError) reject(spawnError);
-      else if (code !== 0) reject(new Error(`技能库解压失败 (${code})：${output.trim().slice(-1200)}`));
+      else if (code !== 0) reject(new Error(`Skill library extraction failed (${code}): ${output.trim().slice(-1200)}`));
       else resolve(output.trim());
     });
   });
@@ -59,12 +59,12 @@ function unquote(value) {
 
 function parseSkill(markdown, file) {
   const match = /^(?:\uFEFF)?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(markdown);
-  if (!match) throw new Error(`技能缺少有效 frontmatter：${file}`);
+  if (!match) throw new Error(`Skill is missing valid frontmatter: ${file}`);
   const lines = match[1].split(/\r?\n/);
   const field = key => lines.find(line => new RegExp(`^${key}:\\s*`).test(line));
   const nameLine = field('name');
   const name = nameLine ? unquote(nameLine.replace(/^name:\s*/, '')) : '';
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) throw new Error(`技能名称无效：${file}`);
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) throw new Error(`Invalid skill name: ${file}`);
   const descriptionIndex = lines.findIndex(line => /^description:\s*/.test(line));
   let description = '';
   if (descriptionIndex >= 0) {
@@ -100,19 +100,19 @@ function scanSkills(skillsRoot) {
     const dir = pending.pop();
     for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
       const file = path.join(dir, item.name);
-      if (item.isSymbolicLink()) throw new Error(`技能库不支持符号链接：${file}`);
+      if (item.isSymbolicLink()) throw new Error(`The skill library does not support symbolic links: ${file}`);
       if (item.isDirectory()) {
         pending.push(file);
         continue;
       }
       if (!item.isFile() || item.name !== 'SKILL.md') continue;
       const stat = fs.statSync(file);
-      if (stat.size > MAX_SKILL_BYTES) throw new Error(`技能文件超过大小限制：${file}`);
+      if (stat.size > MAX_SKILL_BYTES) throw new Error(`Skill file exceeds the size limit: ${file}`);
       const parsed = parseSkill(fs.readFileSync(file, 'utf8'), file);
-      if (names.has(parsed.name)) throw new Error(`发现重复技能名称：${parsed.name}`);
+      if (names.has(parsed.name)) throw new Error(`Duplicate skill name found: ${parsed.name}`);
       names.add(parsed.name);
       entries.push({ ...parsed, path: file, directory: path.dirname(file) });
-      if (entries.length > MAX_SKILLS) throw new Error('技能数量超过允许的上限。');
+      if (entries.length > MAX_SKILLS) throw new Error('The number of skills exceeds the allowed limit.');
     }
   }
   return entries.sort((a, b) => a.name.localeCompare(b.name));
@@ -144,10 +144,10 @@ export function createAboutSecuritySkillLibrary(ctx, options = {}) {
   let restored = false;
 
   function assertOwned(dir) {
-    if (!isInside(home, dir)) throw new Error('技能目录不在插件管理范围内。');
-    if (fs.lstatSync(dir).isSymbolicLink()) throw new Error('技能目录是链接，已停止清理以保护其他文件。');
-    if (readJson(path.join(dir, MARKER)).owner !== OWNER) throw new Error('目录不属于本插件，已停止操作。');
-    if (!isInside(fs.realpathSync(home), fs.realpathSync(dir))) throw new Error('技能目录实际位置不在插件管理范围内。');
+    if (!isInside(home, dir)) throw new Error('The skill directory is outside the area managed by this plugin.');
+    if (fs.lstatSync(dir).isSymbolicLink()) throw new Error('The skill directory is a link. Cleanup stopped to protect other files.');
+    if (readJson(path.join(dir, MARKER)).owner !== OWNER) throw new Error('This directory does not belong to the plugin. Operation stopped.');
+    if (!isInside(fs.realpathSync(home), fs.realpathSync(dir))) throw new Error('The actual skill directory location is outside the area managed by this plugin.');
   }
   function ensureRoot() {
     fs.mkdirSync(home, { recursive: true });
@@ -162,15 +162,15 @@ export function createAboutSecuritySkillLibrary(ctx, options = {}) {
     assertOwned(root);
     assertOwned(dir);
     const skillsPath = path.join(dir, 'skills');
-    if (!fs.statSync(skillsPath).isDirectory()) throw new Error('AboutSecurity 技能目录缺失，请删除后重新下载。');
+    if (!fs.statSync(skillsPath).isDirectory()) throw new Error('The AboutSecurity skill directory is missing. Delete the installation and download again.');
     const found = scanSkills(skillsPath);
-    if (!found.length) throw new Error('没有找到可用的 SKILL.md 文件，请删除后重新下载。');
+    if (!found.length) throw new Error('No usable SKILL.md files were found. Delete the installation and download again.');
     return found;
   }
   function removeOwned(dir) {
     assertOwned(root);
     assertOwned(dir);
-    if (path.dirname(dir) !== root) throw new Error('拒绝清理非托管技能目录。');
+    if (path.dirname(dir) !== root) throw new Error('Refusing to clean an unmanaged skill directory.');
     fs.rmSync(dir, { recursive: true, force: true });
   }
   const snapshot = () => ({ ok: true, skills: [{ ...CATALOG, installed, enabled: active,
@@ -182,14 +182,14 @@ export function createAboutSecuritySkillLibrary(ctx, options = {}) {
   async function downloadArchive(destination, signal) {
     const fetcher = options.fetch || globalThis.fetch;
     progress = { stage: 'metadata', percent: null, receivedBytes: null, totalBytes: null };
-    detail = '正在连接 AboutSecurity 最新版…';
+    detail = 'Connecting to the latest AboutSecurity version…';
     const response = await fetcher(CATALOG.installUrl, {
       signal: AbortSignal.any([signal, AbortSignal.timeout(10 * 60 * 1000)]), redirect: 'error',
     });
-    if (!response.ok || !response.body) throw new Error(`AboutSecurity 下载失败 (HTTP ${response.status})。`);
+    if (!response.ok || !response.body) throw new Error(`AboutSecurity download failed (HTTP ${response.status}).`);
     const totalHeader = Number(response.headers?.get?.('content-length'));
     const totalBytes = Number.isFinite(totalHeader) && totalHeader > 0 ? totalHeader : null;
-    if (totalBytes && totalBytes > MAX_ARCHIVE_BYTES) throw new Error('AboutSecurity 压缩包超过允许的下载大小。');
+    if (totalBytes && totalBytes > MAX_ARCHIVE_BYTES) throw new Error('The AboutSecurity archive exceeds the allowed download size.');
     const file = await fs.promises.open(destination, 'wx');
     let receivedBytes = 0;
     try {
@@ -197,17 +197,17 @@ export function createAboutSecuritySkillLibrary(ctx, options = {}) {
         signal.throwIfAborted();
         const buffer = Buffer.from(chunk);
         receivedBytes += buffer.length;
-        if (receivedBytes > MAX_ARCHIVE_BYTES) throw new Error('AboutSecurity 压缩包超过允许的下载大小。');
+        if (receivedBytes > MAX_ARCHIVE_BYTES) throw new Error('The AboutSecurity archive exceeds the allowed download size.');
         await file.writeFile(buffer);
         const percent = totalBytes ? Math.min(100, Math.floor(receivedBytes * 100 / totalBytes)) : null;
         progress = { stage: 'archive', percent, receivedBytes, totalBytes };
         detail = totalBytes
-          ? `正在下载 AboutSecurity ${formatBytes(receivedBytes)} / ${formatBytes(totalBytes)}`
-          : `正在下载 AboutSecurity ${formatBytes(receivedBytes)}`;
+          ? `Downloading AboutSecurity ${formatBytes(receivedBytes)} / ${formatBytes(totalBytes)}`
+          : `Downloading AboutSecurity ${formatBytes(receivedBytes)}`;
       }
       await file.sync();
     } finally { await file.close(); }
-    if (totalBytes && receivedBytes !== totalBytes) throw new Error('AboutSecurity 下载长度不完整，请重试。');
+    if (totalBytes && receivedBytes !== totalBytes) throw new Error('The AboutSecurity download is incomplete. Please retry.');
     progress = { stage: 'archive', percent: 100, receivedBytes, totalBytes };
   }
 
@@ -218,8 +218,8 @@ export function createAboutSecuritySkillLibrary(ctx, options = {}) {
 
   async function activate() {
     if (active) return;
-    if (closed) throw new Error('插件已停止，请重启 DSH。');
-    if (!runtimeCtx) throw new Error('当前 DSH 尚未提供技能服务，请完整重启官方 Desktop 后重试。');
+    if (closed) throw new Error('The plugin has stopped. Restart DSH.');
+    if (!runtimeCtx) throw new Error('This DSH instance has not provided the skill service yet. Fully restart the official Desktop app and retry.');
     entries = verifyInstallation();
     const candidates = entries.map(entry => ({
       name: entry.name,
@@ -252,7 +252,7 @@ export function createAboutSecuritySkillLibrary(ctx, options = {}) {
 
   async function download() {
     ensureRoot();
-    if (fs.existsSync(installDir)) throw new Error('已有安装目录，请先删除后重新下载。');
+    if (fs.existsSync(installDir)) throw new Error('An installation directory already exists. Delete it before downloading again.');
     const signal = operationSignal();
     const stage = path.join(root, '.staging-aboutsecurity-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8));
     fs.mkdirSync(stage);
@@ -264,13 +264,13 @@ export function createAboutSecuritySkillLibrary(ctx, options = {}) {
       await downloadArchive(archive, signal);
       signal.throwIfAborted();
       progress = { stage: 'extracting', percent: null, receivedBytes: null, totalBytes: null };
-      detail = '下载完成，正在解压技能目录…';
+      detail = 'Download complete. Extracting the skill directory…';
       const tar = options.tarCommand || 'tar';
       await (options.run || run)(tar, ['-xf', archive, '-C', extracted, '--strip-components', '1', '--no-same-owner', '--no-same-permissions', 'AboutSecurity-master/skills'], { cwd: stage, signal });
       signal.throwIfAborted();
       const extractedSkills = path.join(extracted, 'skills');
       const found = scanSkills(extractedSkills);
-      if (found.length < 200) throw new Error(`AboutSecurity 只发现 ${found.length} 个技能，低于预期；已停止安装。`);
+      if (found.length < 200) throw new Error(`Only ${found.length} AboutSecurity skills were found, fewer than expected. Installation stopped.`);
       fs.rmSync(archive, { force: true });
       writeJson(path.join(extracted, MARKER), { owner: OWNER });
       fs.renameSync(extracted, installDir);
@@ -278,13 +278,13 @@ export function createAboutSecuritySkillLibrary(ctx, options = {}) {
       entries = found.map(entry => ({ ...entry, path: path.join(installDir, 'skills', path.relative(extractedSkills, entry.path)), directory: path.dirname(path.join(installDir, 'skills', path.relative(extractedSkills, entry.path))) }));
       canCancel = false;
       progress = { stage: 'registering', percent: null, receivedBytes: null, totalBytes: null };
-      detail = `已下载 ${entries.length} 个技能，正在注册…`;
+      detail = `Downloaded ${entries.length} skills. Registering…`;
     } finally { if (fs.existsSync(stage)) removeOwned(stage); }
   }
 
   function start(action, task) {
-    if (closed) return { status: 503, body: { ...snapshot(), ok: false, message: '插件已停止，请重启。' } };
-    if (busy) return { status: 409, body: { ...snapshot(), ok: false, message: '正在处理，请等待当前操作完成。' } };
+    if (closed) return { status: 503, body: { ...snapshot(), ok: false, message: 'The plugin has stopped. Please restart.' } };
+    if (busy) return { status: 409, body: { ...snapshot(), ok: false, message: 'Processing. Wait for the current operation to finish.' } };
     busy = true; error = null; detail = null; cancelRequested = false;
     operationController = new AbortController();
     progress = action === 'install' ? { stage: 'metadata', percent: null, receivedBytes: null, totalBytes: null } : null;
@@ -292,12 +292,12 @@ export function createAboutSecuritySkillLibrary(ctx, options = {}) {
     phase = { install: 'installing', enable: 'enabling', disable: 'disabling', delete: 'deleting' }[action];
     operation = Promise.resolve().then(task).catch(cause => {
       if (cancelRequested && !closed) {
-        error = null; phase = 'cancelled'; detail = '下载已取消，临时文件已清理。';
+        error = null; phase = 'cancelled'; detail = 'Download cancelled. Temporary files have been cleaned up.';
         progress = { ...(progress || {}), stage: 'cancelled' };
         state.enabled = false;
       } else {
         error = messageOf(cause); phase = 'error';
-        try { ctx.logger?.warn?.('AboutSecurity 技能库：' + error); } catch { /* optional logger */ }
+        try { ctx.logger?.warn?.('AboutSecurity skill library: ' + error); } catch { /* optional logger */ }
       }
     }).finally(() => {
       busy = false;
@@ -312,13 +312,13 @@ export function createAboutSecuritySkillLibrary(ctx, options = {}) {
   function action(body) {
     if (!body || Array.isArray(body) || body.id !== CATALOG.id || !['install', 'enable', 'disable', 'delete', 'cancel'].includes(body.action)
       || Object.keys(body).some(key => !['id', 'action'].includes(key))) {
-      return { status: 400, body: { ok: false, message: '不支持的技能或操作。' } };
+      return { status: 400, body: { ok: false, message: 'Unsupported skill or operation.' } };
     }
     if (body.action === 'cancel') {
-      if (!busy || !canCancel || !operationController) return { status: 409, body: { ...snapshot(), ok: false, message: '当前阶段无法取消。' } };
+      if (!busy || !canCancel || !operationController) return { status: 409, body: { ...snapshot(), ok: false, message: 'Cannot cancel at the current stage.' } };
       cancelRequested = true; canCancel = false; phase = 'cancelling';
       progress = { ...(progress || {}), stage: 'cancelling' };
-      detail = '正在停止下载并清理临时文件…';
+      detail = 'Stopping the download and cleaning up temporary files…';
       operationController.abort(new Error('Cancelled by user'));
       return { status: 202, body: snapshot() };
     }
@@ -329,7 +329,7 @@ export function createAboutSecuritySkillLibrary(ctx, options = {}) {
           canCancel = false;
           state.enabled = true; save(); await activate(); break;
         case 'enable':
-          if (!installed) throw new Error('请先下载安装 AboutSecurity。');
+          if (!installed) throw new Error('Download and install AboutSecurity first.');
           state.enabled = true; save(); await activate(); break;
         case 'disable':
           state.enabled = false; save(); await deactivate(); phase = installed ? 'disabled' : 'not_installed'; break;

@@ -1,47 +1,47 @@
-// dsh-prompt-custom（独立移植版）— host 半边
+// dsh-prompt-custom (standalone port) — host side
 //
-// ── 0.3.0 修复：注入作用域（此前「静默不生效」的根因） ──────────────────────
-// 内核 SystemPrompt 的节注册表是**分层**的（@deepseek-ai/dsh-scope 的 ScopedLayers）：
-// 一个全局层 + 每个 agent 一个 scoped 层。装配时 merge() 先铺全局，再让作用域链由远到近
-// 用 Map.set 覆盖同名节（dsh-scope/lib/index.js:177-181）——**判重只发生在同一层内**。
+// ── 0.3.0 fix: injection scope (the cause of previous silent failures) ──
+// The kernel SystemPrompt section registry is layered (@deepseek-ai/dsh-scope ScopedLayers):
+// one global layer plus a scoped layer per agent. During assembly, merge() lays out the global layer,
+// then Map.set overrides same-name sections from distant to near scopes (dsh-scope/lib/index.js:177-181). Duplicate checks apply within a layer only.
 //
-// 所以「替换官方人设」的正确语义是：用**同名节**注册到**更近的作用域**。
-//   ✗ 注册到插件自己的（根）ctx：根层已被 SystemPrompt 构造函数占用，必然抛
+// Correctly replacing the official persona means registering the same section name in a nearer scope.
+//   ✗ Registering on the plugin's root ctx: SystemPrompt's constructor already occupies that layer, so it throws.
 //       prompt section "deployment:persona-prefix" is already registered
 //       (for a per-agent override, register through that agent's `agent.ctx` instead)
-//     旧版把这个异常 try/catch 吞进 logger，HTTP 只回 applied:null —— 用户侧表现为
-//     「开关是开的、保存显示已保存、但提示词根本没注入」。
-//   ✓ 注册到 agent.ctx（该 agent 的作用域）：落在 agent 层，遮蔽全局 persona，替换生效。
+//     Older versions caught this exception in the logger and returned only applied:null over HTTP:
+//     the switch appeared on and saving appeared successful, but no prompt was injected.
+//   ✓ Registering on agent.ctx: the agent layer shadows the global persona, so replacement takes effect.
 //
-// 本版照内核官方宿主插件范例实现（dsh-file-reference-local/lib/index.js:339-372）：
+// This version follows the official host-plugin example (dsh-file-reference-local/lib/index.js:339-372):
 //   agent.ctx.inject(['systemPrompt'], scope => scope.systemPrompt.section(...))
-//   + ctx.get('agents').list() 补历史 agent + agent/created 增量 + agent/disposed 清理。
-// 用 agent.ctx.inject(...) 而不是 agent.ctx.systemPrompt：作用域 ctx 是 createScope() 造出来的
-// 无 inject 的 fiber，直接取服务拿不到；必须用 inject 派生子 fiber（官方同款写法）。
+//   + ctx.get('agents').list() covers existing agents; agent/created adds new ones; agent/disposed cleans up.
+// Use agent.ctx.inject(...), not agent.ctx.systemPrompt: createScope() produces a scoped fiber without inject,
+// so services cannot be read directly; derive a child fiber with inject, as in the official example.
 //
-// 另外：节的 text 传**函数**（内核每步装配都重新求值，dsh-system-prompt/lib/index.js:342），
-// 因此改文本无需重注册，下一步就生效；只有「启用开关」或「append↔replace 模式」变化才需要
-// 重注册（两种模式的节名不同：dsh:custom-prompt vs deployment:persona-prefix）。
+// Section text is a function, reevaluated at every assembly step (dsh-system-prompt/lib/index.js:342).
+// Editing text therefore needs no registration refresh and takes effect next step; only enablement or
+// append↔replace changes require registration again (section names differ: dsh:custom-prompt vs deployment:persona-prefix).
 //
-// ── 0.3.0 附带修复：把静默失败变成可见 ────────────────────────────────────
-// /config 现在回传 armed / injected / lastError；设置页据此显示真实状态，
-// 不再无条件显示「已保存」。注入失败时把内核错误原文一路带到 UI。
+// ── 0.3.0 additional fix: make silent failures visible ──
+// /config now returns armed / injected / lastError, so settings show the actual state,
+// not an unconditional Saved message. Injection errors propagate the original kernel error to the UI.
 //
-// ── 0.4.0 新增：提示词卡（多份提示词留存 + 一键切换） ──────────────────────
-// 配置文件新增 `cards` 字段：数组，每张 { id, name, text }。刻意**与 enabled/mode/text
-// 同文件**：读（GET 回读）、写（非破坏性合并）、陌生键告警、proto 错配保护全部复用同一条
-// 通道，不引入第二处落盘。卡片文本只有被「使用」后才成为 live.text —— 在那之前不参与
-// 注入、也不参与变量扫描（激活瞬间它就是 live.text，告警自然覆盖）。
+// ── 0.4.0 addition: prompt cards (multiple saved prompts and one-click switching) ──
+// Configuration adds a cards array, each item { id, name, text }, intentionally in the same file
+// as enabled/mode/text. GET reads, non-destructive merges, unknown-key warnings, and protocol mismatch
+// protection share one path, without a second persistence location. Card text becomes live.text only when used;
+// before that it participates in neither injection nor variable scanning. Once activated, existing warnings cover it.
 //
-// 协议号 2→3 的原因：新界面 + 旧宿主（只刷新页面没重启进程）时，旧宿主的 normalize
-// 会把 POST 里的 cards **静默丢掉** —— 正是本插件最忌讳的「界面说存了、数据没了」。
-// proto 拉到 3 后新界面能识别这种错配，把卡片区禁用并把原因说清。
-// 3→4 增加只传递启用状态的 composer toggle 路由，避免把提示词正文暴露给该控件。
+// Protocol 2→3: with a new UI and old host (page refreshed without restarting), the old normalize
+// silently drops POST cards—the exact failure to avoid: the UI says Saved while data disappears.
+// Protocol 3 lets the new UI detect the mismatch, disable cards, and explain why.
+// Protocol 3→4 adds an enablement-only composer toggle route, without exposing prompt text to that control.
 //
-// 另修一条既有隐患：POST 的 cards 字段**必须是数组**才认。非数组（客户端 bug / 手工
-// 请求）不得把磁盘上已有的卡片清空 —— strip 掉该字段、保留现状，与「非破坏性写盘」同一条立场。
+// Another fix: accept POST cards only when it is an array. A non-array from a client bug or manual request
+// must not clear existing cards; strip the field and preserve the current data, following non-destructive persistence.
 //
-// 配置存 $DSH_HOME/prompt-custom.json；读写走插件自己的 webServer 路由。
+// Configuration: $DSH_HOME/prompt-custom.json; reads and writes use the plugin's webServer routes.
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -56,12 +56,12 @@ export const name = 'dsh-prompt-custom';
 export const inject = ['systemPrompt', 'webServer'];
 
 const SECTION_CUSTOM = 'dsh:custom-prompt';
-// 官方固定开场白独立于 deployment persona，必须按它自己的节名覆盖。
+// The official fixed greeting is separate from the deployment persona and must be overridden by its own section name.
 const SECTION_HARNESS_IDENTITY = 'harness:identity';
-// 与内核同名才叫「替换」；改名只会变成并列追加（dsh-system-prompt/lib/index.js:49-57）。
+// Replacement requires the kernel's exact section name; another name merely appends (dsh-system-prompt/lib/index.js:49-57).
 const SECTION_PERSONA_PREFIX = 'deployment:persona-prefix';
 const SECTION_PERSONA_SUFFIX = 'deployment:persona-suffix';
-// 内核 SECTION_ORDERS 的兜底值，仅当 getSectionOrder 取不到时使用。
+// Kernel SECTION_ORDERS fallback, used only when getSectionOrder is unavailable.
 const ORDER_PERSONA_PREFIX = 0;
 const ORDER_PERSONA_SUFFIX = 10200;
 const ORDER_HARNESS_IDENTITY = -1000;
@@ -73,8 +73,8 @@ const FINDINGS_ROUTE = '/api/dsh-prompt-custom/findings';
 const FINDINGS_MD_ROUTE = '/api/dsh-prompt-custom/findings.md';
 const MATCH_ROUTE = '/api/dsh-prompt-custom/match';
 const CAMPAIGNS_ROUTE = '/api/dsh-prompt-custom/campaigns';
-// HTTP 接口协议版本。client 会核对它：宿主 Node 进程不重启就不会换插件代码，
-// 而页面一刷新就会拿到新的 client bundle —— 这个错配必须能被 UI 说清楚。
+// HTTP protocol version checked by the client: host code changes only after restarting Node,
+// while a page refresh loads the new client bundle. The UI must clearly explain this mismatch.
 // 2→3 (0.4.0): config added cards; 3→4 adds the prompt-free toggle route.
 const API_PROTO = 11;
 const PLUGIN_VERSION = '0.20.12';
@@ -89,21 +89,21 @@ function configPath() {
 function readFileConfig() {
   try {
     const parsed = JSON.parse(fs.readFileSync(configPath(), 'utf8'));
-    // 必须是**非数组**的普通对象。数组也满足 typeof === 'object'，若不排除，
-    // 它会被当成 {"0":..,"1":..} 到处流窜：
-    //   · normalize() 展开出 0/1 这种伪字段
-    //   · detectUnknownConfigKeys() 会把 "0"/"1" 报成「陌生配置键」（假告警）
+    // Must be a plain non-array object. Arrays also satisfy typeof === 'object'; without exclusion,
+    // they would spread as {"0":..,"1":..}:
+    //   · normalize() would create spurious 0/1 fields
+    //   · detectUnknownConfigKeys() would falsely report "0"/"1" as unknown configuration keys
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
   } catch { return null; }
 }
 
 /**
- * 写配置。**只覆盖本插件拥有的字段，保留磁盘上其它键**（非破坏性写盘）。
+ * Write configuration: overwrite only fields owned by this plugin; preserve other on-disk keys (non-destructive persistence).
  *
- * 为什么必须这样：这个文件可能被**另一个版本**的插件写过（例如新版多了一个 `prefix` 字段）。
- * 如果旧版本直接把整个文件重写成自己那三个字段，用户在新版本里的设置就被**不可逆地抹掉**了
- * —— 这与本插件历史上那次「静默失效」是同一类事故：界面上什么都没说，数据就没了。
- * 未知键的存在会由 `unknownConfigKeys` 报到界面上，但**保存本身不能把它们删掉**。
+ * Another plugin version may have written this file, for example adding a prefix field.
+ * If an older version rewrites the entire file with only its three fields, newer settings are irreversibly lost.
+ * This is the same class of failure as the earlier silent failure: data disappears without any UI explanation.
+ * unknownConfigKeys reports unfamiliar keys to the UI, but saving itself must never remove them.
  */
 function writeFileConfig(cfg) {
   const file = configPath();
@@ -112,31 +112,31 @@ function writeFileConfig(cfg) {
   try {
     const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
     if (raw && typeof raw === 'object' && !Array.isArray(raw)) base = raw;
-  } catch { /* 文件不存在或已损坏：从空对象开始 */ }
+  } catch { /* Missing or corrupt file: start with an empty object */ }
   const out = { ...base, ...cfg };
   fs.writeFileSync(file, JSON.stringify(out, null, 2) + '\n', 'utf8');
   return file;
 }
 
-// 提示词卡的上限与字段规格（client 侧 CARDS_MAX 与 CARD_ID 判据必须与这里配对）。
+// Prompt-card limits and field specifications (client CARDS_MAX and CARD_ID must match).
 const MAX_CARDS = 50;
 const CARD_NAME_MAX = 60;
 const CARD_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
-/** 与 client 的 newCardId() 同形状（主机侧只做兜底：手工编辑的文件里缺 id 时补一个）。 */
+/** Same shape as client newCardId(); host fallback adds an ID when a manually edited file omits one. */
 function makeCardId() {
   return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
 /**
- * 净化卡片数组。注意签名与语义：**非数组一律归 []**（不是 null）——
- * 调用点要先判定「body 里到底带没带 cards 字段」，带非数组时 strip 掉整个字段
- * 让 merge 保留现状；能走到这里的非数组只可能是磁盘上本来就没有 cards（冷启动），
- * 归 [] 正是「还没有卡片」。
+ * Sanitize cards. Non-arrays always become [] (not null).
+ * Callers must first check whether the body contains cards; strip the field if it is a non-array
+ * so merging preserves existing data. A non-array reaching this function can only mean no cards on disk (cold start),
+ * where [] correctly means no cards yet.
  *
- * 逐张净化：非对象/双空（name 与 text 都为空）丢弃；name 截断；id 缺失或不合规补发。
- * 上限 MAX_CARDS：超出截断（客户端 UI 同值封顶，正常交互走不到这里；手工编辑的极端
- * 文件由 GET 回读时截断展示，保存时落成截断后的数组 —— 在代码注释里明说，不装看不见）。
+ * Per-card sanitization: discard non-objects or items with empty name and text; truncate names; replace missing/invalid IDs.
+ * MAX_CARDS truncates excess cards (the client applies the same limit, so normal interaction cannot exceed it).
+ * Oversized hand-edited files display truncated cards on GET and persist the truncated array on save; this is explicit here.
  */
 function sanitizeCards(input) {
   if (!Array.isArray(input)) return [];
@@ -148,7 +148,7 @@ function sanitizeCards(input) {
     if (name.length > CARD_NAME_MAX) name = name.slice(0, CARD_NAME_MAX);
     if (!name && !text) continue;
     const id = typeof raw.id === 'string' && CARD_ID.test(raw.id) ? raw.id : makeCardId();
-    out.push({ id, name: name || '未命名卡片', text });
+    out.push({ id, name: name || 'Untitled card', text });
     if (out.length >= MAX_CARDS) break;
   }
   return out;
@@ -196,18 +196,18 @@ function readBody(req, limit = 256 * 1024) {
   });
 }
 
-// 内核的变量语法（dsh-system-prompt/lib/index.js:58-61）。
+// Kernel variable syntax (dsh-system-prompt/lib/index.js:58-61).
 const VAR_GROUP = /^\{\{([^{}]*)\}\}/;
 const VAR_NAME = /^[a-z][a-z0-9_]*$/;
 
-/** 新建一个变量扫描结果。 */
+/** Create a new variable-scan result. */
 function newSink() { return { missing: new Set(), malformed: new Set() }; }
 
 /**
- * 只扫描不替换：找出配置文本里会被内核判为「未知/畸形变量」的引用。
- * 这不是学术洁癖 —— 内核 renderPrompt 对未知变量是**抛错**（会让整轮运行失败），
- * 所以用户写出一个 {{modell}} 会让每一次模型步都炸，而页面上什么都看不到。
- * 这里把它变成设置页上的一条可见警告。
+ * Scan without replacing: find references the kernel would consider unknown or malformed variables.
+ * Kernel renderPrompt throws on unknown variables, failing the entire round.
+ * A typo such as {{modell}} would therefore break every model step without an explanation on the page.
+ * Expose the problem as a visible settings warning.
  */
 function scanVariables(text, known, sink) {
   if (typeof text !== 'string' || !text.includes('{{')) return;
@@ -223,8 +223,8 @@ function scanVariables(text, known, sink) {
 }
 
 /**
- * 预览用的插值：已知变量替换成实际值，未知/畸形**原样保留**（预览要宽容，
- * 与内核装配时的抛错行为相对）。扫描结果记进 sink，供页面提示。
+ * Preview interpolation replaces known variables with actual values and preserves unknown/malformed ones unchanged,
+ * unlike strict kernel assembly. Record scan results in sink for the UI.
  */
 function interpolateText(text, variables, sink) {
   if (typeof text !== 'string') return '';
@@ -248,7 +248,7 @@ function interpolateText(text, variables, sink) {
   return out + text.slice(last);
 }
 
-/** 把装配结果渲染成预览文本（含变量替换）。 */
+/** Render assembled output as preview text, including variable substitution. */
 function renderSections(assembly, sink) {
   const secs = (assembly && assembly.sections) || [];
   const vars = (assembly && assembly.variables) || {};
@@ -262,10 +262,10 @@ function renderSections(assembly, sink) {
     .join('\n\n');
 }
 
-/** 只取节名。`assemble()` 返回的 section 只有 `{ name, text, interpolate? }`，**没有 order**
- *  （dsh-system-prompt/lib/index.js:339-344）；order 要用 `getSectionOrder('常量名')` 取，
- *  而这里的 `s.name` 是节名（如 `"deployment:persona-prefix"`）不是常量名，取不到。
- *  所以这里**不返回** order —— 早先版本返回的 `order: undefined` 是个恒定的死字段。 */
+/** Return section names only. assemble() sections contain { name, text, interpolate? }, without order
+ * (dsh-system-prompt/lib/index.js:339-344). order requires getSectionOrder('CONSTANT_NAME'),
+ * whereas s.name is a section name (such as "deployment:persona-prefix"), not a constant name.
+ * Do not return order: the older order: undefined field was permanently meaningless. */
 function sectionNames(assembly) {
   return ((assembly && assembly.sections) || [])
     .filter(Boolean)
@@ -273,22 +273,22 @@ function sectionNames(assembly) {
 }
 
 /**
- * 本版本认识的配置字段。之外的键 = 这个配置文件是**别的版本**的插件写的。
+ * Configuration fields recognized by this version. Other keys indicate a file written by another version.
  *
- * 为什么要专门检测：配置 schema 一旦演进（比如把 `text` 拆成 `prefix`/`suffix`），
- * 新代码读不懂旧文件里的 `text` → 用户**正在生效的提示词会静默消失**。
- * 这个插件已经吃过一次「静默失效」的亏（见 index.js 顶部注释），不能在同源风险上再栽一次。
+ * Explicit detection is required as the schema evolves (for example, splitting text into prefix/suffix):
+ * code unable to understand an older text field could silently discard the user's active prompt.
+ * This plugin already suffered a silent failure (see the opening comments); do not repeat the same class of mistake.
  */
 const KNOWN_CONFIG_KEYS = new Set(['enabled', 'mode', 'text', 'cards']);
 
 export function apply(ctx, config) {
   const reaSkillLibrary = createSkillLibrary(ctx);
   const aboutSecurityLibrary = createAboutSecuritySkillLibrary(ctx);
-  // 知识库：语料随插件分发（plugin/knowledge/），零下载、零网络，默认开启。
+  // Knowledge base: bundled corpus (plugin/knowledge/), no download or network access; enabled by default.
   const knowledgeLibrary = createKnowledgeLibrary(ctx);
-  // 漏洞报告：持久化在 DSH_HOME/vuln-report/findings.json；AI 通过回环 HTTP 写入。
+  // Vulnerability report: stored at DSH_HOME/vuln-report/findings.json; AI writes through loopback HTTP.
   const findings = createFindingsStore(ctx);
-  // 自动化编排：本地匹配索引（读 knowledge/ frontmatter）+ 任务台账。
+  // Automation: local matching index (knowledge/ frontmatter) and task ledger.
   const corpusDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'knowledge');
   const kbIndex = createKbIndex(corpusDir);
   const knowledgeEnabled = () => knowledgeLibrary.snapshot().skills[0]?.enabled === true;
@@ -317,29 +317,29 @@ export function apply(ctx, config) {
   const warn = (msg) => { try { ctx.logger?.warn?.(msg); } catch { console.warn(msg); } };
 
   let live = normalize({ ...(config || {}), ...(readFileConfig() || {}) });
-  let lastError = null;                 // 最近一次注入失败的内核原文；null = 无错误
+  let lastError = null;                 // Original text of the latest kernel injection error; null = no error
   const entries = new Map();            // agent -> { shape: 'off'|'append'|'replace', fiber }
-  let lastAgent = null;                 // 供 /preview 选作用域
+  let lastAgent = null;                 // Selects a scope for /preview
 
-  /** 当前配置对应的注入形态；'off' 表示不该有任何自定义节。 */
+  /** Injection shape for the current configuration; 'off' means no custom sections should exist. */
   const desiredShape = () => {
     if (!live.enabled || !String(live.text || '').trim()) return 'off';
     return live.mode === 'replace' ? 'replace' : 'append';
   };
 
   /**
-   * 节文本用函数：内核每次装配都重新求值（dsh-system-prompt/lib/index.js:342），
-   * 所以改文本无需重注册、下一步就生效。
+   * Section text is a function reevaluated on every kernel assembly (dsh-system-prompt/lib/index.js:342),
+   * so text changes take effect next step without registering again.
    *
-   * 这里**不做**「形态/开关是否仍匹配」的判断：那种判断的失败形态是返回空串，
-   * 而 replace 模式下空串会把官方人设整段抹掉（比多留一步旧文案严重得多）。
-   * 形态与开关的一致性交给 install 的重注册保证（POST 与 GET 都会对齐）。
+   * Do not check whether the shape/switch still matches here: failed checks would return an empty string,
+   * which in replace mode would erase the entire official persona (worse than retaining old text for one step).
+   * install registration refreshes ensure consistency between shape and switch (aligned on POST and GET).
    *
-   * textShadow 专门堵「文本被清空的转换窗口」：清空文本会让 desiredShape 变 'off'，
-   * 而销毁已注册的 replace 节是在后续微任务里完成的；在两者之间内核若恰好装配一次，
-   * 空串就会把官方人设抹掉（验证台 E4/E6 抓到的空人设帧）。清空时沿用上一份非空文本，
-   * 节随后就被销毁、官方人设自然恢复 —— 于是这个窗口不可能产出空人设。
-   * 稳态下 textShadow 完全惰性：文本为空时根本不会有节被注册，currentText 不会被调用。
+   * textShadow covers the transition when text is cleared: desiredShape becomes 'off',
+   * but the registered replace section is removed in a later microtask. An intervening assembly
+   * could erase the official persona with an empty string (empty-persona frames caught by E4/E6). Retain the last nonempty text
+   * until the section is disposed and the official persona is restored, preventing an empty-persona window.
+   * In steady state, textShadow is inert: empty text means no registered section and no call to currentText.
    */
   let textShadow = String(live.text || '');
   const currentText = () => {
@@ -355,17 +355,17 @@ export function apply(ctx, config) {
     } catch { return fallback; }
   };
 
-  // 安装/卸载串行化：agent/created（内核 serial 且被 await）与设置页保存可能并发，
-  // 交错会留下「注册了一半」，或对同一 agent 重复注册（后者会撞内核重名保护）。
+  // Serialize install/uninstall: agent/created (serial and awaited by the kernel) can race settings saves.
+  // Interleaving could leave partial registration or register twice for one agent, triggering duplicate-name protection.
   //
-  // 关键：这条队列**永不 reject**。它挂在 agent/created 的 listener 上，而内核的
-  // serial 派发一旦被 listener 的 rejection 传染，就会让**会话创建失败**——插件绝不能
-  // 有这个能力。失败一律降级成 lastError（再由设置页显示出来）。
+  // This queue never rejects. It is attached to the agent/created listener; kernel serial dispatch
+  // would propagate a listener rejection and prevent session creation. The plugin must never cause that.
+  // Downgrade every failure to lastError for display in settings.
   let queue = Promise.resolve();
   const serialize = (fn) => {
     const next = queue.then(fn, fn).catch((error) => {
       lastError = String((error && error.message) || error);
-      warn('[dsh-prompt-custom] 安装队列异常（已降级）：' + lastError);
+      warn('[dsh-prompt-custom] Installation queue error (handled): ' + lastError);
     });
     queue = next;
     return next;
@@ -377,18 +377,18 @@ export function apply(ctx, config) {
     entries.delete(agent);
     if (lastAgent === agent) lastAgent = null;
     if (!entry.fiber) return;
-    try { await entry.fiber.dispose(); } catch { /* agent 作用域通常已随之销毁 */ }
+    try { await entry.fiber.dispose(); } catch { /* Agent scope is usually already disposed */ }
   };
 
   /**
-   * 在一个 agent 的作用域里装上（或卸下）自定义节。
-   * 调用方负责串行化（install / reinstallAll 已持锁）。
+   * Install or remove custom sections in one agent's scope.
+   * Callers serialize access (install / reinstallAll already hold the lock).
    */
   const installInner = async (agent) => {
     if (!agent || !agent.ctx || typeof agent.ctx.inject !== 'function') return;
     const shape = desiredShape();
     const entry = entries.get(agent);
-    if (entry && entry.shape === shape) return;      // 形态没变：文本函数自己会跟上
+    if (entry && entry.shape === shape) return;      // Same shape: the text function picks up changes itself
     if (entry) await disposeEntry(agent);
     if (shape === 'off') { entries.set(agent, { shape: 'off', fiber: null }); return; }
 
@@ -397,16 +397,16 @@ export function apply(ctx, config) {
       fiber = agent.ctx.inject(['systemPrompt'], (scope) => {
         try {
           const sp = scope.systemPrompt;
-          // 仅在自定义提示词生效的 agent 层移除官方固定开场白。
-          // 不改用户正文；禁用插件/清空正文时随该 fiber 一起卸载，恢复官方默认。
+          // Remove the official fixed greeting only in the agent layer where the custom prompt is active.
+          // Do not modify user text. Disabling/clearing disposes this fiber and restores official defaults.
           sp.section({
             name: SECTION_HARNESS_IDENTITY,
             order: orderOf(sp, 'HARNESS_IDENTITY', ORDER_HARNESS_IDENTITY),
             text: ''
           });
           if (shape === 'replace') {
-            // 同名才叫替换；suffix 必须**显式补空节**，否则全局 suffix 仍然生效
-            // （merge 只覆盖出现过的名字）。
+            // Replacement requires the same name; suffix must explicitly have an empty section or the global suffix remains active
+            // because merge only overrides names present in the layer.
             sp.section({
               name: SECTION_PERSONA_PREFIX,
               order: orderOf(sp, 'DEPLOYMENT_PERSONA_PREFIX', ORDER_PERSONA_PREFIX),
@@ -427,16 +427,16 @@ export function apply(ctx, config) {
           lastError = null;
         } catch (error) {
           lastError = String((error && error.message) || error);
-          warn('[dsh-prompt-custom] 注入失败（agent ' + (agent.id || '?') + '）：' + lastError);
+          warn('[dsh-prompt-custom] Injection failed (agent ' + (agent.id || '?') + '): ' + lastError);
         }
       });
-      await fiber;                                   // 等装载完，状态才准
+      await fiber;                                   // Wait for loading before reporting accurate status
       entries.set(agent, { shape, fiber });
       lastAgent = agent;
-      log('[dsh-prompt-custom] 已注入 agent ' + (agent.id || '?') + '：mode=' + shape);
+      log('[dsh-prompt-custom] Injected into agent ' + (agent.id || '?') + ': mode=' + shape);
     } catch (error) {
       lastError = String((error && error.message) || error);
-      warn('[dsh-prompt-custom] agent 作用域注册失败：' + lastError);
+      warn('[dsh-prompt-custom] Agent-scope registration failed: ' + lastError);
       try { await fiber?.dispose?.(); } catch { /* ignore */ }
       entries.set(agent, { shape: 'off', fiber: null });
     }
@@ -444,12 +444,12 @@ export function apply(ctx, config) {
 
   const install = (agent) => serialize(() => installInner(agent));
 
-  /** 配置变化后，把所有已知 agent 的注入形态刷成当前配置。 */
+  /** Refresh all known agents' injection shapes to match the updated configuration. */
   const reinstallAll = () => serialize(async () => {
     for (const agent of [...entries.keys()]) await installInner(agent);
   });
 
-  /** 活会话列表（只读；不做任何注入或唤醒）。 */
+  /** Live-session list (read-only; no injection or wakeups). */
   const liveAgents = () => {
     try {
       const agents = typeof ctx.get === 'function' ? ctx.get('agents') : undefined;
@@ -457,17 +457,17 @@ export function apply(ctx, config) {
     } catch { return []; }
   };
 
-  // ---- 自动续跑：不达标就继续推，直到 done 或轮次上限 ----
+  // ---- Automatic continuation: advance until objectives are met, done, or the round limit ----
   const autopilotTimers = new Map();
 
   const autopilotMessage = (campaign, next) => [
-    '继续任务「' + (campaign.objective || campaign.name) + '」（' + campaign.id + '）。',
-    '- 当前阶段：' + next.stage + '｜进度：' + next.progress + '%｜第 ' + next.rounds + '/' + next.maxRounds + ' 轮',
-    '- 完成判据：' + next.doneCriteria.join('；'),
-    next.stalled ? '- 已连续无进展：换入口/换候选，禁止重复同一 payload。' : '',
-    '- 本轮必须做：' + (next.nextActions.length ? next.nextActions.map((a) => a.text).join('；') : next.instructions.join('；')),
-    '- 做完立刻 finding_upsert（命中）与 campaign_upsert(advance=true)；未命中也要记 attempt 说明排除原因。',
-    '- 达成判据后调用 campaign_upsert(done=true)，不要再空转。'
+    'Continue task "' + (campaign.objective || campaign.name) + '" (' + campaign.id + ').',
+    '- Current stage: ' + next.stage + ' | Progress: ' + next.progress + '% | Round ' + next.rounds + '/' + next.maxRounds,
+    '- Completion criteria: ' + next.doneCriteria.join('; '),
+    next.stalled ? '- Repeated lack of progress: change entry point/candidate; do not repeat the same payload.' : '',
+    '- Required this round: ' + (next.nextActions.length ? next.nextActions.map((a) => a.text).join('; ') : next.instructions.join('; ')),
+    '- Immediately record successful checks with finding_upsert and progress with campaign_upsert(advance=true); record unsuccessful attempts and exclusion reasons too.',
+    '- Call campaign_upsert(done=true) when completion criteria are met; do not continue idling.'
   ].filter(Boolean).join('\n');
 
   const autopilotTick = (id) => {
@@ -510,7 +510,7 @@ export function apply(ctx, config) {
     if (timer) { clearTimeout(timer); autopilotTimers.delete(id); }
   };
 
-  // ---- 自动开跑：用内核消息工厂构造真正的 user 消息（不是裸对象）----
+  // ---- Automatic start: construct real user messages with the kernel factory, not bare objects ----
   let llmModule;
   const loadLlm = async () => {
     if (llmModule !== undefined) return llmModule;
@@ -523,41 +523,43 @@ export function apply(ctx, config) {
     return llmModule;
   };
 
-  const kickText = (campaign) => '开始执行任务「' + campaign.name + '」（' + campaign.id + '）。先读台账与当前阶段，给出本阶段计划，然后逐步执行；每完成一步用 campaign_upsert 记下步骤与阶段。';
+  const kickText = (campaign) => 'Start task "' + campaign.name + '" (' + campaign.id + '). Read the ledger and current stage, provide a plan for this stage, then execute step by step. After each step, record the step and stage with campaign_upsert.';
 
   const kickAgent = async (agent, campaign) => {
-    if (!agent || typeof agent.followup !== 'function') return { kicked: false, reason: '没有可用的活会话' };
-    if (agent.status !== 'idle') return { kicked: false, reason: '会话正忙（' + String(agent.status) + '）' };
+    if (!agent || typeof agent.followup !== 'function') return { kicked: false, reason: 'No live session available' };
+    if (agent.status !== 'idle') return { kicked: false, reason: 'Session is busy (' + String(agent.status) + ')' };
     const llm = await loadLlm();
     const createUserMessage = llm && llm.createUserMessage;
     const content = [{ type: 'text', text: kickText(campaign) }];
     let message;
     try {
-      // 首选内核工厂；拿不到就按 createMessage 的形状手工补 role/id（缺 role 正是上次坏会话的原因）。
+      // Prefer the kernel factory; otherwise fill role/id to match createMessage (missing role previously corrupted sessions).
       message = typeof createUserMessage === 'function'
         ? createUserMessage({ content, source: { kind: 'user' } })
         : { role: 'user', content, source: { kind: 'user' }, id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) };
-    } catch (error) { return { kicked: false, reason: '构造消息失败：' + String((error && error.message) || error) }; }
-    if (!message || message.role !== 'user') return { kicked: false, reason: '消息缺少 role=user，已中止' };
+    } catch (error) { return { kicked: false, reason: 'Failed to construct message: ' + String((error && error.message) || error) }; }
+    if (!message || message.role !== 'user') return { kicked: false, reason: 'Message lacks role=user; aborted' };
     try { await Promise.resolve(agent.followup(message)); return { kicked: true }; }
-    catch (error) { return { kicked: false, reason: 'followup 失败：' + String((error && error.message) || error) }; }
+    catch (error) { return { kicked: false, reason: 'followup failed: ' + String((error && error.message) || error) }; }
   };
-  // 固定规则节：文本常量，绝不随轮次变化（避免运行期改动系统提示）。
+  // Fixed-rules section: constant text, never changed between rounds (avoid runtime system-prompt changes).
   const RULES_SECTION = 'campaign:rules';
   const ORDER_RULES = 1101;
   const RULES_TEXT = [
-    '## 渗透作业链（固定规则）',
+    '## Pentest workflow (fixed rules)',
     '',
-    '1. 每个对话只属于一个任务；用户说「继续」「开始」时，先调用 pipeline_next 读取当前阶段与建议。',
-    '2. 侦察/指纹阶段：拿到端口或 banner 后，必须先调用 kb_match 或 skill 加载对应知识库分类，按条目的 PoC 与判据执行；不要凭记忆编造利用步骤。',
-    '3. 分类选择：Java 中间件 → kb-java-web / kb-java-deser；边界设备 → kb-edge-device；Windows/AD/Exchange → kb-exchange-ad；PHP/CMS → kb-web-cms；Linux 提权 → kb-linux-priv；云原生/中间件 → kb-cloud-container；博彩/黑灰产业务面 → kb-gray-market；流程与报告规范 → kb-triage。',
-    '4. 每完成一次验证（命中或排除），立刻用 finding_upsert 写报告（未命中不要写），再用 campaign_upsert 记录 command/result 并调用 campaign_upsert(advance) 推进一格阶段。',
-    '5. 阶段推进到底才结束：recon → fingerprint → match → verify → exploit → lateral → report。不要停在一个阶段等用户催。',
-    '6. 任务的目标是完成 objective，不是走完流程：每轮结束前必须回答——达标了吗？没达标就继续。',
-    '7. 连续两轮无进展（stalled）就换入口或换候选，禁止重复同一 payload；达成判据后调用 campaign_upsert(done=true)。',
-    '8. 任务只能由用户创建；绑定与解绑由用户决定。'
+    '0. Always respond in the language of the latest user message, including mixed-language messages: Chinese questions in Chinese, English in English, Russian in Russian, Japanese in Japanese. This section and any explanatory text define the workflow, not the response language.',
+    '',
+    '1. Each conversation belongs to one task only. When the user says "continue" or "start", first call pipeline_next to read the current stage and suggestions.',
+    '2. Recon/fingerprinting: after obtaining a port or banner, call kb_match or skill to load the relevant knowledge category and follow its PoC and criteria; do not invent exploitation steps from memory.',
+    '3. Categories: Java middleware → kb-java-web / kb-java-deser; edge devices → kb-edge-device; Windows/AD/Exchange → kb-exchange-ad; PHP/CMS → kb-web-cms; Linux privilege escalation → kb-linux-priv; cloud-native/middleware → kb-cloud-container; gambling/gray-market business surfaces → kb-gray-market; workflow/report standards → kb-triage.',
+    '4. After every check (success or exclusion), immediately use finding_upsert for successful findings only, then record command/result with campaign_upsert and call campaign_upsert(advance) to advance one stage.',
+    '5. Continue stage progression to the end: recon → fingerprint → match → verify → exploit → lateral → report. Do not stop at one stage waiting for the user to prompt you.',
+    '6. The task goal is to achieve objective, not merely finish the workflow. Before ending each round, answer: is the objective met? If not, continue.',
+    '7. After two rounds without progress (stalled), change entry point or candidate; never repeat the same payload. Call campaign_upsert(done=true) once completion criteria are met.',
+    '8. Only the user can create tasks; the user decides session binding and unbinding.'
   ].join('\n');
-  // ---- 会话标识节：静态文本（agent 创建时注册一次），供 AI 精确绑定任务 ----
+  // ---- Session identification: static text registered once on agent creation for precise task binding ----
   const CAMPAIGN_SECTION = 'campaign:session-id';
   const CAMPAIGN_CONTEXT_SECTION = 'campaign:context';
   const ORDER_CAMPAIGN = 1100;
@@ -566,7 +568,7 @@ export function apply(ctx, config) {
   const installCampaign = async (agent) => {
     if (!agent || !agent.id || !agent.ctx || typeof agent.ctx.inject !== 'function') return;
     if (campaignFibers.has(agent)) return;
-    const text = '## 会话标识\n- 当前会话 id（sessionId）：' + agent.id + '\n- 用户说「绑任务 X」时，调用 campaign_upsert 并把 sessionId 传成这个 id，即可只绑本对话。';
+    const text = '## Session identification\n- Current session id (sessionId): ' + agent.id + '\n- When the user says "bind task X", call campaign_upsert with this sessionId to bind only this conversation.';
     try {
       const fiber = agent.ctx.inject(['systemPrompt'], (scope) => {
         scope.systemPrompt.section({ name: CAMPAIGN_SECTION, order: ORDER_CAMPAIGN, text });
@@ -579,18 +581,18 @@ export function apply(ctx, config) {
             if (!campaign) return '';
             const next = campaigns.nextStep(campaign.id, availableKbIndex);
             return [
-          '目标：' + (campaign.objective || campaign.name),
-          '进度：' + next.progress + '%' + (next.stalled ? '（连续无进展，换方向）' : ''),
-          '完成判据：' + next.doneCriteria.join('；'),
-              '## 当前绑定的渗透任务',
-              '- 任务：' + campaign.name + ' (' + campaign.id + ')',
-              '- 阶段：' + campaign.stage,
-              '- 授权域名：' + campaign.scope.domains.join(', '),
-              '- 授权 CIDR：' + campaign.scope.cidrs.join(', '),
-              '- 排除范围：' + campaign.scope.exclude.join(', '),
-              '- 已记录资产：' + campaign.assets.length,
-              '- 下一步：' + next.instructions.join('；'),
-              '- 只处理上述授权范围内的目标；使用 kb_match、skill_search/skill_read 查证候选，验证后用 finding_upsert 写证据，并用 campaign_upsert 记录进度。',
+          'Objective: ' + (campaign.objective || campaign.name),
+          'Progress: ' + next.progress + '%' + (next.stalled ? ' (stalled; change direction)' : ''),
+          'Completion criteria: ' + next.doneCriteria.join('; '),
+              '## Currently bound pentest task',
+              '- Task: ' + campaign.name + ' (' + campaign.id + ')',
+              '- Stage: ' + campaign.stage,
+              '- Authorized domains: ' + campaign.scope.domains.join(', '),
+              '- Authorized CIDRs: ' + campaign.scope.cidrs.join(', '),
+              '- Exclusions: ' + campaign.scope.exclude.join(', '),
+              '- Recorded assets: ' + campaign.assets.length,
+              '- Next step: ' + next.instructions.join('; '),
+              '- Work only on targets within the authorized scope above; use kb_match and skill_search/skill_read to verify candidates, record evidence with finding_upsert, and track progress with campaign_upsert.',
             ].join('\n');
           },
         });
@@ -598,7 +600,7 @@ export function apply(ctx, config) {
       await fiber;
       campaignFibers.set(agent, fiber);
     } catch (error) {
-      warn('[dsh-prompt-custom] 会话标识节注入失败：' + ((error && error.message) || error));
+      warn('[dsh-prompt-custom] Session-identification injection failed: ' + ((error && error.message) || error));
     }
   };
 
@@ -608,8 +610,8 @@ export function apply(ctx, config) {
     campaignFibers.delete(agent);
     try { const pending = fiber.dispose?.(); if (pending && pending.catch) pending.catch(() => {}); } catch { /* ignore */ }
   };
-  // ---- 生命周期 ----
-  // 补历史 agent（宿主插件 apply 时通常为空；HMR / 后启用时才有意义）。
+  // ---- Lifecycle ----
+  // Include existing agents (usually empty when applying the host plugin; useful for HMR / later enablement).
   try {
     const agents = typeof ctx.get === 'function' ? ctx.get('agents') : undefined;
     const list = agents && typeof agents.list === 'function' ? agents.list() : [];
@@ -618,11 +620,11 @@ export function apply(ctx, config) {
         install(agent); installCampaign(agent);
       }
   } catch (error) {
-    warn('[dsh-prompt-custom] 补历史 agent 失败（忽略）：' + ((error && error.message) || error));
+    warn('[dsh-prompt-custom] Failed to include existing agents (ignored): ' + ((error && error.message) || error));
   }
 
-  // agent/created 是 serial 且被 await 的：这里装好的节一定参与该 agent 的第一次装配。
-  // 注意 listener 抛错会让会话创建失败（内核语义），所以一律吞掉并记进 lastError。
+  // agent/created is serial and awaited: sections installed here participate in the agent's first assembly.
+  // Listener errors prevent session creation (kernel semantics), so always catch them and record lastError.
   ctx.on('agent/created', async ({ agent } = {}) => {
     if (!agent) return;
     lastAgent = agent;
@@ -639,9 +641,9 @@ export function apply(ctx, config) {
     if (!entry) return;
     entries.delete(agent);
     if (lastAgent === agent) lastAgent = null;
-    // 节本身注册在 agent 的作用域 fiber 上，会随 agent 一起销毁；这里只清记录。
-    // 刻意**不 await** dispose：agent 作用域此时已在拆除，若 dispose 悬挂会卡死
-    // 上面那条串行队列，让后续所有 agent 都装不上。
+    // Sections belong to the agent-scope fiber and are disposed with the agent; only remove records here.
+    // Deliberately do not await dispose: the agent scope is already being torn down; a stalled dispose
+    // would block the serial queue above and prevent installation for every subsequent agent.
     try {
       const p = entry.fiber?.dispose?.();
       if (p && typeof p.catch === 'function') p.catch(() => {});
@@ -651,50 +653,50 @@ export function apply(ctx, config) {
   const setConfig = async (next) => {
     live = normalize({ ...live, ...next });
     try { writeFileConfig(live); }
-    catch (error) { warn('[dsh-prompt-custom] 持久化失败：' + ((error && error.message) || error)); }
+    catch (error) { warn('[dsh-prompt-custom] Persistence failed: ' + ((error && error.message) || error)); }
     await reinstallAll();
     return live;
   };
 
-  /** 给设置页用的真实状态：armed=配置就绪、injected=当前已注入的活 agent 数、lastError=内核原文。 */
+  /** Actual settings status: armed=config ready, injected=number of live injected agents, lastError=original kernel error. */
   const status = () => {
     let injected = 0;
     for (const entry of entries.values()) if (entry.shape !== 'off') injected++;
     return {
-      // 接口协议版本：client 半边可能因为「只刷新页面不重启」而先于宿主更新
-      // （页面会重新取 index.html，从而拿到新的 client bundle；但宿主 Node 进程里的
-      //  插件代码不重启就不会换）。client 靠这个字段判定错配并给出可执行的提示，
-      //  否则用户只会看到一个空预览框，完全不知道发生了什么。
+      // Protocol version: the client can update before the host if only the page is refreshed.
+      // The page reloads index.html and obtains a new client bundle, while host Node plugin code
+      // stays unchanged until restart. The client uses this field to detect mismatches and provide actionable guidance;
+      // otherwise users would see an empty preview without knowing what happened.
       proto: API_PROTO,
       armed: desiredShape() !== 'off',
       agents: entries.size,
       injected,
       lastError,
-      // 配置文件里有本版本不认识的键（schema 演进保护，见文件顶部注释）
+      // Keys not recognized by this version (schema-evolution protection; see opening comments)
       unknownConfigKeys: detectUnknownConfigKeys(),
       path: configPath()
     };
   };
 
-  // 变量告警必须同时挂在 /config 上（不能只在 /preview）：
-  // 未知变量会让内核 renderPrompt 抛错 → **每一轮模型步都失败**，
-  // 用户一进设置页就该看到这个隐患，而不是「点过预览之后」才出现。
-  // 已知变量名一律从内核真实装配的 variables 里取，绝不写死（否则会误报）。
+  // Variable warnings must also be available on /config, not only /preview:
+  // unknown variables make kernel renderPrompt throw, failing every model step.
+  // Show this risk as soon as settings opens, not only after the user requests a preview.
+  // Known variable names always come from actual assembled kernel variables, never a hardcoded list (avoids false warnings).
   let knownVarNames = null;
   const refreshKnownVars = async () => {
     try {
       const assembly = await ctx.systemPrompt.assemble({});
       knownVarNames = new Set(Object.keys((assembly && assembly.variables) || {}));
-    } catch { /* 保持上一次的集合，宁可不报也不要误报 */ }
+    } catch { /* Keep the previous set; an omitted warning is better than a false positive */ }
     return knownVarNames;
   };
   const variableWarnings = () => {
     const sink = newSink();
     if (knownVarNames) {
-      // 注意：这里扫描的是**所有承载提示词文本的字段**。将来若把 text 拆成多段，
-      // 必须把新字段一并加进来，否则未知变量告警会漏掉一半（后果是每轮模型步抛错）。
-      // 0.4.0 的 cards 不在此列：卡片文本在被「使用」之前不参与注入，
-      // 激活瞬间它就变成 live.text，由这条扫描自然覆盖。
+      // Scan every field carrying prompt text. If text is split into multiple fields later,
+      // include all of them or unknown-variable warnings will miss some references and assembly will fail each step.
+      // Cards from 0.4.0 are excluded: card text is not injected before activation,
+      // then becomes live.text and is naturally covered by this scan.
       for (const key of ['text']) {
         try { scanVariables(String(live[key] || ''), knownVarNames, sink); } catch { /* ignore */ }
       }
@@ -703,8 +705,8 @@ export function apply(ctx, config) {
   };
 
   /**
-   * 配置文件里有本版本不认识的键 → 说明它是别的版本的插件写的。
-   * 不回传就等于让「配置 schema 演进」变成又一次静默失效。
+   * Unknown configuration keys mean the file was written by another plugin version.
+   * Not returning them would turn schema evolution into another silent failure.
    */
   const detectUnknownConfigKeys = () => {
     try {
@@ -713,7 +715,7 @@ export function apply(ctx, config) {
     } catch { return []; }
   };
 
-  // ---- HTTP 路由（回环限制） ----
+  // ---- HTTP routes (loopback restricted) ----
   let automationTools = { ok: false, pending: true };
   ctx.inject(['webServer'], (webCtx) => {
     const route = (p, handler) => {
@@ -775,13 +777,13 @@ export function apply(ctx, config) {
       res.end();
     });
 
-    // 活会话列表：给"把任务绑到哪个对话"用
+    // Live sessions: selects the conversation to bind a task to
     route("/api/dsh-prompt-custom/sessions", async (req, res) => {
       if (!isLoopback(req)) { res.writeHead(403); res.end("forbidden"); return; }
       if (req.method !== "GET" && req.method !== "HEAD") { res.writeHead(405, { allow: "GET, HEAD" }); res.end(); return; }
       try {
         const sessions = liveAgents().filter((agent) => agent && agent.id).map((agent) => {
-          // 标题尽力而为：不同内核版本把标题放在不同位置，读不到就交给前端显示 id 尾号。
+          // Best-effort title: location varies by kernel version; if unavailable, let the frontend display an ID suffix.
           const probes = [agent.title, agent.session && agent.session.title, agent.session && agent.session.meta && agent.session.meta.title, agent.options && agent.options.title];
           const title = probes.find((x) => typeof x === 'string' && x.trim().length > 0) || '';
           return { id: agent.id, title, status: typeof agent.status === 'string' ? agent.status : '' };
@@ -792,7 +794,7 @@ export function apply(ctx, config) {
       }
     });
 
-    // 自检：把"知识库能不能被 AI 看到"这条链路逐段摊开
+    // Self-check: expose every link in the chain determining whether AI can see the knowledge base
     route("/api/dsh-prompt-custom/diagnostics", async (req, res) => {
       if (!isLoopback(req)) { res.writeHead(403); res.end("forbidden"); return; }
       if (req.method !== "GET" && req.method !== "HEAD") { res.writeHead(405, { allow: "GET, HEAD" }); res.end(); return; }
@@ -819,7 +821,7 @@ export function apply(ctx, config) {
       try {
         report.skillsService = typeof (ctx.get && ctx.get("skills")) === "object" || typeof (ctx.get && ctx.get("skills")) === "function" ? "present" : "missing";
       } catch { report.skillsService = "unknown"; }
-      // 技能库（AboutSecurity / REA）：装没装、注册了多少
+      // Skill libraries (AboutSecurity / REA): installation and registered-skill counts
       try {
         const libs = [];
         for (const lib of [reaSkillLibrary, aboutSecurityLibrary]) {
@@ -839,7 +841,7 @@ export function apply(ctx, config) {
       sendJson(res, 200, report);
     });
 
-    // 免责声明点「拒绝」时调用：先回包，再关掉整个 Harness。
+    // Called when the disclaimer is declined: reply first, then close all of Harness.
     route("/api/dsh-prompt-custom/shutdown", async (req, res) => {
       if (!isLoopback(req)) { res.writeHead(403); res.end("forbidden"); return; }
       if (req.method !== "POST") { res.writeHead(405, { allow: "POST" }); res.end(); return; }
@@ -854,10 +856,10 @@ export function apply(ctx, config) {
         } catch { sendJson(res, 403, { ok: false, message: "invalid origin" }); return; }
       }
       sendJson(res, 200, { ok: true, message: "shutting down" });
-      log("[dsh-prompt-custom] 用户拒绝免责声明，正在关闭 Harness");
+      log("[dsh-prompt-custom] User declined the disclaimer; closing Harness");
       setTimeout(() => { try { process.exit(0); } catch { } }, 500);
     });
-    // 指纹 → 知识库候选（本地索引，不联网）
+    // Fingerprint → knowledge-base candidates (local index, no network)
     route(MATCH_ROUTE, async (req, res) => {
       if (!isLoopback(req)) { res.writeHead(403); res.end('forbidden'); return; }
       if (req.method !== 'POST') { res.writeHead(405, { allow: 'POST' }); res.end(); return; }
@@ -869,7 +871,7 @@ export function apply(ctx, config) {
       }
     });
 
-    // 任务台账：GET 列表 / GET ?id= 详情 / POST 动作
+    // Task ledger: GET list / GET ?id= details / POST actions
     route(CAMPAIGNS_ROUTE, async (req, res) => {
       if (!isLoopback(req)) { res.writeHead(403); res.end('forbidden'); return; }
       if (req.method === 'GET' || req.method === 'HEAD') {
@@ -897,7 +899,7 @@ export function apply(ctx, config) {
         try {
           const body = await readBody(req, 256 * 1024);
           const action = String((body && body.action) || 'create');
-          // 任务只能由用户在面板里创建：浏览器同源 fetch 会带 sec-fetch-site，脚本/工具默认不带。
+          // Only users can create tasks through the panel: same-origin browser fetch includes sec-fetch-site; scripts/tools do not by default.
           if (action === 'create') {
             const site = String((req.headers && req.headers['sec-fetch-site']) || '');
             const ui = String((req.headers && req.headers['x-dsh-ui']) || '');
@@ -907,7 +909,7 @@ export function apply(ctx, config) {
               try { sameOrigin = new URL(origin).host === String((req.headers && req.headers.host) || ''); } catch { sameOrigin = false; }
             }
             if (site !== 'same-origin' && site !== 'none' && ui !== '1' && !sameOrigin) {
-              sendJson(res, 403, { ok: false, message: '任务只能由用户在插件面板里创建；AI 只能在已有任务里记账。' });
+              sendJson(res, 403, { ok: false, message: 'Only the user can create tasks in the plugin panel; AI can only record progress in existing tasks.' });
               return;
             }
           }
@@ -922,7 +924,7 @@ export function apply(ctx, config) {
               kick = await kickAgent(target, result);
               if (kick && kick.kicked) scheduleAutopilot(result.id);
             } else if (agents.length > 1) {
-              kick = { kicked: false, reason: "有多个对话在线，请点「让 AI 开始」指定是哪一个" };
+              kick = { kicked: false, reason: "Multiple conversations are online; click Start AI to choose one" };
             }
           }
           else if (action === 'patch') result = campaigns.patch(body.id, body || {});
@@ -957,10 +959,10 @@ export function apply(ctx, config) {
           else if (action === "next") { sendJson(res, 200, { ok: true, proto: API_PROTO, next: campaigns.nextStep(body.id, availableKbIndex) }); return; }
           else if (action === "bind") {
             const explicit = String(body.sessionId || '');
-            if (!explicit) { sendJson(res, 400, { ok: false, message: "绑定需要明确 sessionId：在那个对话里说「绑任务 X」，或先只保留一个对话。" }); return; }
+            if (!explicit) { sendJson(res, 400, { ok: false, message: "Binding requires an explicit sessionId: say 'bind task X' in that conversation, or leave only one conversation open." }); return; }
             const bound = campaigns.bind(body.id, explicit);
             const agent = liveAgents().find((a) => a.id === bound.sessionId);
-            kick = agent ? await kickAgent(agent, bound) : { kicked: false, reason: "该会话不在线" };
+            kick = agent ? await kickAgent(agent, bound) : { kicked: false, reason: "That session is offline" };
             if (bound.autopilot !== false && !bound.done) scheduleAutopilot(bound.id);
             sendJson(res, 200, { ok: true, proto: API_PROTO, item: bound, kicked: kick.kicked, kickReason: kick.reason, ...campaigns.list() });
             return;
@@ -973,12 +975,12 @@ export function apply(ctx, config) {
           else if (action === "kick") {
             const campaign = campaigns.get(body.id);
             const agent = liveAgents().find((a) => a.id === campaign.sessionId);
-            const kicked = agent ? await kickAgent(agent, campaign) : { kicked: false, reason: "任务还没有绑定在线会话" };
+            const kicked = agent ? await kickAgent(agent, campaign) : { kicked: false, reason: "Task is not bound to an online session" };
             if (kicked && kicked.kicked) scheduleAutopilot(campaign.id);
             sendJson(res, 200, { ok: true, proto: API_PROTO, kicked: kicked.kicked, kickReason: kicked.reason, item: campaign });
             return;
           }
-          else { sendJson(res, 400, { ok: false, message: '不支持的 action：' + action }); return; }
+          else { sendJson(res, 400, { ok: false, message: 'Unsupported action: ' + action }); return; }
           sendJson(res, 200, { ok: true, proto: API_PROTO, item: result, kicked: kick.kicked, kickReason: kick.reason, ...campaigns.list() });
         } catch (error) {
           sendJson(res, 400, { ok: false, message: String((error && error.message) || error) });
@@ -989,7 +991,7 @@ export function apply(ctx, config) {
       res.end();
     });
 
-    // 漏洞报告：GET 读、POST 写（upsert / delete / clear / status）、导出 markdown。
+    // Vulnerability report: GET read, POST write (upsert / delete / clear / status), Markdown export.
     route(FINDINGS_ROUTE, async (req, res) => {
       if (!isLoopback(req)) { res.writeHead(403); res.end('forbidden'); return; }
       if (req.method === 'GET' || req.method === 'HEAD') {
@@ -1004,7 +1006,7 @@ export function apply(ctx, config) {
           else if (action === 'delete') findings.remove(body.id);
           else if (action === 'clear') findings.clear();
           else if (action === 'status') findings.setStatus(body.id, body.status);
-          else { sendJson(res, 400, { ok: false, message: '不支持的 action：' + action }); return; }
+          else { sendJson(res, 400, { ok: false, message: 'Unsupported action: ' + action }); return; }
           sendJson(res, 200, { proto: API_PROTO, ...findings.snapshot() });
         } catch (error) {
           sendJson(res, 400, { ok: false, message: String((error && error.message) || error) });
@@ -1032,7 +1034,7 @@ export function apply(ctx, config) {
       }
     });
 
-    // 知识库页签专用：只读目录（分类 + 条目 title/severity/entry），并回传开关状态。
+    // Knowledge-base tab: read-only catalog (categories + entry title/severity/entry), plus enabled state.
     route(KNOWLEDGE_ROUTE, async (req, res) => {
       if (!isLoopback(req)) { res.writeHead(403); res.end('forbidden'); return; }
       if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405, { allow: 'GET, HEAD' }); res.end(); return; }
@@ -1062,11 +1064,11 @@ export function apply(ctx, config) {
     route(CONFIG_ROUTE, async (req, res) => {
       if (!isLoopback(req)) { res.writeHead(403); res.end('forbidden'); return; }
       if (req.method === 'GET' || req.method === 'HEAD') {
-        // 以磁盘为准回读一次，保证多窗口一致。
-        // 注意：只更新 live 是不够的 —— 磁盘被本实例 POST 之外的方式改过（手工编辑、
-        // 或另一个共享同一 $DSH_HOME 的进程写入）时，已注册的 scoped 节还停在旧形态，
-        // 会出现「armed:false 但 injected:1」这种自相矛盾，甚至把官方人设整段抹掉。
-        // 所以回读之后必须把注入形态对齐一次（形态没变时 installInner 会直接早退）。
+        // Reread from disk to maintain consistency across windows.
+        // Updating live alone is insufficient: if disk changes outside this instance's POST handler
+        // (manual edits or another process sharing $DSH_HOME), registered scoped sections retain the old shape,
+        // creating contradictions such as armed:false with injected:1, or even erasing the official persona.
+        // Align the injection shape after rereading (installInner returns early when unchanged).
         const fromDisk = readFileConfig();
         if (fromDisk) live = normalize({ ...live, ...fromDisk });
         await refreshKnownVars();
@@ -1076,11 +1078,11 @@ export function apply(ctx, config) {
       }
       if (req.method === 'POST') {
         try {
-          // 上限 2MB：主文本 + 最多 50 张卡片。默认 256KB 对卡片集太紧。
+          // 2 MB limit: main text plus up to 50 cards. The default 256 KB is too small for a card collection.
           const body = await readBody(req, 2 * 1024 * 1024);
-          // 部分更新语义：body 里哪个字段在场就更新哪个（setConfig 会与 live 合并）。
-          // cards 只认数组：非数组（客户端 bug / 手写请求 / 旧客户端残留）strip 掉，
-          // 不得把磁盘上已有的卡片清空 —— 与「非破坏性写盘」同一条立场。
+          // Partial updates: update only fields present in body (setConfig merges with live).
+          // Accept cards only as an array; strip non-arrays from buggy clients, manual requests, or old clients.
+          // Never clear existing cards on disk; preserve non-destructive persistence semantics.
           const patch = body && typeof body === 'object' && !Array.isArray(body) ? { ...body } : {};
           if ('cards' in patch && !Array.isArray(patch.cards)) delete patch.cards;
           const saved = await setConfig(patch);
@@ -1095,12 +1097,12 @@ export function apply(ctx, config) {
       res.end();
     });
 
-    // 预览分两份，语义必须分开：
-    //   official  = assemble({})，**不含**按 agent 注入的自定义节 → 就是「官方提示词」，
-    //               供用户对照着写替换内容（按钮的本来用途）。
-    //   effective = assemble({agent, scope: agent})，模型这一步真正看到的全文，
-    //               替换模式下能看出官方 persona 确实被遮蔽了。
-    // 早期版本只返回后者并把它当 text 用，于是「预览官方提示词」里出现的是用户自己的文案 —— 已修正。
+    // Two preview types with distinct semantics:
+    //   official  = assemble({}), without agent-injected custom sections: the official prompt,
+    //               for comparing and writing replacement content (the button's original purpose).
+    //   effective = assemble({agent, scope: agent}), the full text actually seen by the model this step;
+    //               replace mode shows that the official persona is truly shadowed.
+    // Older versions returned only effective as text, so Official prompt preview showed user content; fixed.
     route(PREVIEW_ROUTE, async (req, res) => {
       if (!isLoopback(req)) { res.writeHead(403); res.end('forbidden'); return; }
       if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405, { allow: 'GET, HEAD' }); res.end(); return; }
@@ -1117,13 +1119,13 @@ export function apply(ctx, config) {
           effective = renderSections(scopedAssembly, sink);
           sections = sectionNames(scopedAssembly);
         }
-        // 单独扫一遍用户自己写的文本：它会以函数形式注入，写错变量会让每一步装配都抛错。
+        // Separately scan user-written text: it is injected as a function; incorrect variables fail every assembly step.
         await refreshKnownVars();
         sendJson(res, 200, {
           ok: true,
           official,
           effective,
-          // 兼容字段：text 固定给 official（旧客户端的按钮语义就是「官方提示词」）
+          // Compatibility: text always means official (the old client button meant Official prompt).
           text: official,
           scoped: !!agent,
           agentId: agent ? (agent.id || null) : null,
@@ -1136,13 +1138,13 @@ export function apply(ctx, config) {
       }
     });
   });
-  // 原生工具是可选增强：拿不到 dsh-tools 就静默退回 HTTP。
+  // Native tools are an optional enhancement: silently fall back to HTTP if dsh-tools is unavailable.
   registerAutomationTools(ctx, { kbIndex: availableKbIndex, campaigns, findings, skillIndex }).then((result) => {
     automationTools = result;
-    if (result.ok) log('[dsh-prompt-custom] 已注册原生工具：' + result.registered.join(', '));
-    else warn('[dsh-prompt-custom] 原生工具未启用（HTTP 仍可用）：' + result.reason);
+    if (result.ok) log('[dsh-prompt-custom] Registered native tools: ' + result.registered.join(', '));
+    else warn('[dsh-prompt-custom] Native tools disabled (HTTP remains available): ' + result.reason);
   }).catch((error) => {
     automationTools = { ok: false, reason: String((error && error.message) || error) };
-    warn('[dsh-prompt-custom] 原生工具注册异常：' + automationTools.reason);
+    warn('[dsh-prompt-custom] Native tool registration error: ' + automationTools.reason);
   });
 }

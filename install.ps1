@@ -157,21 +157,21 @@ $env:DSH_HOME = $targetHome
 
 $dshExecutable = Find-DshExecutable -Command $DshCommand
 if (-not $dshExecutable -and $PromptForDshPath -and -not $DryRun -and [string]::IsNullOrWhiteSpace($DshCommand)) {
-  Write-Step '未自动找到 DeepSeek Harness。请右键其快捷方式 → 打开文件所在的位置，复制安装文件夹路径。'
-  Write-Step '可输入安装文件夹、DeepSeek Harness.exe 或 dsh.cmd 的完整路径；直接回车取消。'
-  $enteredPath = Read-Host 'DeepSeek Harness 路径'
+  Write-Step 'DeepSeek Harness was not found automatically. Right-click its shortcut, choose Open file location, and copy the install folder path.'
+  Write-Step 'Enter the install folder, or the full path to DeepSeek Harness.exe or dsh.cmd; press Enter to cancel.'
+  $enteredPath = Read-Host 'DeepSeek Harness path'
   if (-not [string]::IsNullOrWhiteSpace($enteredPath)) {
     $dshExecutable = Find-DshExecutable -Command $enteredPath
   }
 }
 if (-not $dshExecutable) {
-  throw '未找到 DSH 命令行工具。可运行 .\install.ps1 -DshCommand "D:\应用\DeepSeek Harness"（替换为实际安装目录或 dsh.cmd 路径）。若数据目录也已移动，另传 -DshHome "D:\数据\.dsh"；请勿将程序安装目录当作数据目录。'
+  throw 'DSH command-line tool not found. Run .\install.ps1 -DshCommand "D:\App\DeepSeek Harness" (replace with the real install directory or the dsh.cmd path). If the data directory was moved too, also pass -DshHome "D:\data\.dsh"; do not use the program install directory as the data directory.'
 }
 
 if ($Profile -eq 'desktop') {
   $desktopProfile = Join-Path $targetHome 'profiles\desktop'
   if (-not (Test-Path -LiteralPath (Join-Path $desktopProfile 'package.json') -PathType Leaf)) {
-    throw ('未找到 Desktop 配置：' + $desktopProfile + '。请先启动一次 DeepSeek Harness Desktop；若数据目录已移动，请使用 -DshHome 指定 .dsh 数据目录（不是程序安装目录）。')
+    throw ('Desktop profile not found: ' + $desktopProfile + '. Start DeepSeek Harness Desktop once first; if the data directory was moved, pass -DshHome to point at the .dsh data directory (not the program install directory).')
   }
 }
 
@@ -189,12 +189,12 @@ if ($DryRun) {
   return
 }
 
-# 进程还在：只提醒，不做任何动作。
+# Still running: warn only, change nothing.
 if ($harnessProcesses.Count -gt 0) {
   Write-Host ''
-  Write-Step ('检测到 DeepSeek Harness 正在运行（' + $harnessProcesses.Count + ' 个进程）。')
-  Write-Step '请先完全退出 DeepSeek Harness（包括右下角托盘图标 → 退出），然后重新双击 点我执行脚本.cmd。'
-  Write-Step '这次没有改动任何文件。'
+  Write-Step ('DeepSeek Harness is running (' + $harnessProcesses.Count + ' processes).')
+  Write-Step 'Quit DeepSeek Harness completely first (including the tray icon at the bottom right, then Quit), then double-click run-installer.cmd again.'
+  Write-Step 'No files were changed this time.'
   Write-Host ''
   exit 1
 }
@@ -211,7 +211,7 @@ if ($hadPrompt -and $sourceHash) {
     $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
     $promptBackup = $promptTarget + '.backup-' + $stamp
     [System.IO.File]::Copy($promptTarget, $promptBackup, $false)
-    Write-Step ('原有提示词配置已备份: ' + $promptBackup)
+    Write-Step ('Existing prompt configuration backed up to: ' + $promptBackup)
   }
 }
 
@@ -222,7 +222,7 @@ Get-ChildItem -LiteralPath $sourcePlugin -Force | ForEach-Object {
 if ($sourceHash -and -not $targetMatches) {
   [System.IO.File]::Copy($sourcePrompt, $promptTarget, $true)
 }
-Write-Step ('文件已复制到 ' + $pluginTarget)
+Write-Step ('Files copied to ' + $pluginTarget)
 
 try {
   & $dshExecutable plugin --profile $Profile add $pluginTarget
@@ -233,16 +233,16 @@ try {
 } catch {
   if ($hadPrompt -and $promptBackup -and (Test-Path -LiteralPath $promptBackup -PathType Leaf)) {
     [System.IO.File]::Copy($promptBackup, $promptTarget, $true)
-    Write-Step '安装失败，已还原原提示词配置'
+    Write-Step 'Install failed; the original prompt configuration was restored'
   }
   throw
 }
 
 $version = ''
 try { $version = (Get-Content -LiteralPath (Join-Path $sourcePlugin 'package.json') -Raw | ConvertFrom-Json).version } catch { }
-Write-Step ('安装完成：@deepseek-ai/dsh-prompt-custom ' + $version + '（profile: ' + $Profile + '）')
+Write-Step ('Install complete: @deepseek-ai/dsh-prompt-custom ' + $version + ' (profile: ' + $Profile + '）')
 try {
   Add-Content -LiteralPath $logPath -Value ((Get-Date -Format o) + ' installed version ' + $version) -Encoding UTF8
 } catch { }
 
-Write-Step '现在打开 DeepSeek Harness 即可加载新版本。'
+Write-Step 'Start DeepSeek Harness now to load the new version.'

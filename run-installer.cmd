@@ -1,4 +1,5 @@
 @echo off
+title dsh-prompt-custom installer
 setlocal
 cd /d "%~dp0"
 echo ================================================

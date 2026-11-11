@@ -1,12 +1,13 @@
-// 漏洞报告存储：$DSH_HOME/vuln-report/findings.json
+// Vulnerability report storage: $DSH_HOME/vuln-report/findings.json
 //
-// 为什么用 HTTP 而不是 ctx.tools.register()：工具注册要求 @deepseek-ai/dsh-tools 的
-// defineTool 与 peer 依赖，装不上就是整页报错；而宿主已经有一套回环 HTTP 路由，
-// AI 用自己的 shell（curl/pwsh）一条命令就能把发现写进来，零新依赖、零协议风险。
+// Why HTTP instead of ctx.tools.register(): tool registration requires defineTool from
+// @deepseek-ai/dsh-tools and its peer dependencies; failed installation breaks the entire page.
+// The host already has loopback HTTP routes, so the AI can write findings with one shell command
+// (curl/pwsh), with no new dependencies or protocol risks.
 //
-// 写入方（AI）拿到的是：POST /api/dsh-prompt-custom/findings
+// The writer (AI) receives: POST /api/dsh-prompt-custom/findings
 //   { "action": "upsert", "title": "...", "severity": "critical", "target": "...", ... }
-// 页签只读这份文件，不参与取证，所以这里**不做**任何网络访问。
+// The tab only reads this file and does not collect evidence, so there is **no** network access here.
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -39,7 +40,7 @@ export function createFindingsStore(ctx, options = {}) {
     const evidence = clampText(raw?.evidence ?? previous?.evidence ?? '');
     const item = {
       id: oneLine(raw?.id || previous?.id || '', 64) || 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-      title: oneLine(raw?.title || previous?.title || '未命名漏洞', 200),
+      title: oneLine(raw?.title || previous?.title || 'Untitled vulnerability', 200),
       severity: SEVERITIES.includes(raw?.severity) ? raw.severity : (previous?.severity || 'medium'),
       status: STATUSES.includes(raw?.status) ? raw.status : (previous?.status || 'open'),
       target,
@@ -65,7 +66,7 @@ export function createFindingsStore(ctx, options = {}) {
       const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
       const items = Array.isArray(parsed?.items) ? parsed.items.filter((x) => x && typeof x === 'object') : [];
       state = { schema: 1, updatedAt: Number(parsed?.updatedAt) || 0, items: items.slice(0, MAX_ITEMS) };
-    } catch { /* 文件不存在或损坏：空报告 */ }
+    } catch { /* Missing or corrupt file: empty report. */ }
     return state;
   }
 
@@ -100,11 +101,11 @@ export function createFindingsStore(ctx, options = {}) {
     const previous = raw?.id ? state.items.find((x) => x.id === raw.id) : undefined;
     const item = normalizeItem(raw || {}, previous);
     if (!previous && item.source === 'ai' && (!item.target || !item.evidence.trim())) {
-      throw new Error('AI 新增漏洞必须提供目标和证据。');
+      throw new Error('AI-added vulnerabilities must include a target and evidence.');
     }
     if (previous) state.items = state.items.map((x) => (x.id === item.id ? item : x));
     else {
-      if (state.items.length >= MAX_ITEMS) throw new Error('报告条目已达上限（' + MAX_ITEMS + '），请先清理。');
+      if (state.items.length >= MAX_ITEMS) throw new Error('Report entry limit reached (' + MAX_ITEMS + '). Remove entries first.');
       state.items = [item, ...state.items];
     }
     save();
@@ -116,7 +117,7 @@ export function createFindingsStore(ctx, options = {}) {
     const key = oneLine(id, 64);
     const before = state.items.length;
     state.items = state.items.filter((x) => x.id !== key);
-    if (state.items.length === before) throw new Error('没有这条记录：' + key);
+    if (state.items.length === before) throw new Error('Record not found: ' + key);
     save();
     return true;
   }
@@ -128,33 +129,33 @@ export function createFindingsStore(ctx, options = {}) {
   }
 
   function setStatus(id, status) {
-    if (!STATUSES.includes(status)) throw new Error('不支持的状态：' + status);
+    if (!STATUSES.includes(status)) throw new Error('Unsupported status: ' + status);
     const key = oneLine(id, 64);
     if (!state.items.length) load();
-    if (!state.items.some((item) => item.id === key)) throw new Error('没有这条记录：' + key);
+    if (!state.items.some((item) => item.id === key)) throw new Error('Record not found: ' + key);
     return upsert({ id: key, status });
   }
 
-  /** Markdown 报告：按严重度分组，含统计表与逐条证据。 */
+  /** Markdown report: grouped by severity, with a statistics table and per-entry evidence. */
   function toMarkdown() {
     const s = stats();
-    const label = { critical: '严重', high: '高危', medium: '中危', low: '低危', info: '信息' };
+    const label = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', info: 'Informational' };
     const lines = [
-      '# 漏洞报告',
+      '# Vulnerability Report',
       '',
-      '- 生成时间：' + new Date().toISOString(),
-      '- 条目总数：' + s.total + '（严重 ' + s.critical + ' / 高危 ' + s.high + ' / 中危 ' + s.medium + ' / 低危 ' + s.low + ' / 信息 ' + s.info + '）',
-      '- 未修复：' + s.open,
+      '- Generated at: ' + new Date().toISOString(),
+      '- Total entries: ' + s.total + ' (Critical ' + s.critical + ' / High ' + s.high + ' / Medium ' + s.medium + ' / Low ' + s.low + ' / Informational ' + s.info + ')',
+      '- Open: ' + s.open,
       '',
-      '## 汇总',
+      '## Summary',
       '',
-      '| 严重度 | 数量 |',
+      '| Severity | Count |',
       '|---|---|',
-      '| 严重 | ' + s.critical + ' |',
-      '| 高危 | ' + s.high + ' |',
-      '| 中危 | ' + s.medium + ' |',
-      '| 低危 | ' + s.low + ' |',
-      '| 信息 | ' + s.info + ' |',
+      '| Critical | ' + s.critical + ' |',
+      '| High | ' + s.high + ' |',
+      '| Medium | ' + s.medium + ' |',
+      '| Low | ' + s.low + ' |',
+      '| Informational | ' + s.info + ' |',
       '',
     ];
     for (const severity of SEVERITIES) {
@@ -163,17 +164,17 @@ export function createFindingsStore(ctx, options = {}) {
       lines.push('## ' + label[severity] + '（' + group.length + '）', '');
       for (const item of group) {
         lines.push('### ' + item.title, '');
-        if (item.target || item.url) lines.push('- 目标：' + [item.target, item.url].filter(Boolean).join(' · '));
+        if (item.target || item.url) lines.push('- Target: ' + [item.target, item.url].filter(Boolean).join(' · '));
         if (item.cve) lines.push('- CVE：' + item.cve);
-        if (item.category) lines.push('- 类别：' + item.category);
+        if (item.category) lines.push('- Category: ' + item.category);
         if (item.cvss !== null) lines.push('- CVSS：' + item.cvss);
-        lines.push('- 状态：' + item.status + (item.verified ? '（已验证）' : '（未验证）'));
-        lines.push('- 发现时间：' + item.foundAt);
+        lines.push('- Status: ' + item.status + (item.verified ? ' (verified)' : ' (unverified)'));
+        lines.push('- Found at: ' + item.foundAt);
         lines.push('');
-        if (item.description) lines.push('**描述**', '', item.description, '');
-        if (item.evidence) lines.push('**证据**', '', ...item.evidence.split(/\r?\n/).map((line) => '    ' + line), '');
-        if (item.remediation) lines.push('**修复建议**', '', item.remediation, '');
-        if (item.references) lines.push('**参考**', '', item.references, '');
+        if (item.description) lines.push('**Description**', '', item.description, '');
+        if (item.evidence) lines.push('**Evidence**', '', ...item.evidence.split(/\r?\n/).map((line) => '    ' + line), '');
+        if (item.remediation) lines.push('**Remediation**', '', item.remediation, '');
+        if (item.references) lines.push('**References**', '', item.references, '');
         lines.push('---', '');
       }
     }

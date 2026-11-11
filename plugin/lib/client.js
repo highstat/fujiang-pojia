@@ -1,28 +1,34 @@
-// dsh-prompt-custom（独立移植版）— client 半边：设置页「自定义提示词」栏。
+// dsh-prompt-custom (standalone port) — client half: the Custom Prompts settings section.
 //
-// 0.5.0 重做（用户裁定「卡片即提示词」）—— 交互与视觉同时回炉：
+// 0.5.0 redesign (the user decided that cards are prompts): reworked interactions and visuals.
 //
-// 一、交互（0.4.0 的差在哪）：卡片列表 + 「使用这张」+ 独立保存按钮的三件套叠出四层状态 ——
-//   卡片高亮只认「文本恰好相等」，「保存」只写正文不写卡片，于是「编辑→保存→卡片还停在旧
-//   文本上」看起来像丢字；切换卡片要跨半屏去找「使用这张」；编辑框有改动时还得先处置一次。
-//   最常用的两个动作（切卡 / 存正文）各走各的门，却互相不知道对方。
-//   本版把卡片抬成**唯一的正文选择器**：
-//   1. 卡片是可点选的芯片：点一下 = 切换为该卡正文 + 立即生效（编辑框干净时一次 POST）。
-//      编辑框有未保存改动时给三个出口（保存并切换 / 另存为卡片并切换 / 丢弃改动并切换），
-//      每个出口都写清后果，不再有「点了没反应」的中间态。
-//   2. 「保存」写回**当前卡**（正文来自哪张卡就写回哪张），按钮上直接写目标
-//      （「保存到「卡片甲」并生效」）；正文不属于任何卡片时写「保存并生效」。
-//      卡片不再是一次性快照，编辑→保存→卡片同步，闭环成立。
-//   3. 「新建卡片」存编辑框当前内容，并成为当前生效；分叉场景走切换面板里的「另存为卡片」。
-//   4. 改名 / 删除收进「当前生效」那一行的行内操作（操作对象 = 当前卡），不再每张卡挂三颗按钮。
-//   5. 预览折叠成一行，展开后在「官方全文 / 实际生效」间切换；需要对照时才占版面。
+// 1. Interactions (shortcomings in 0.4.0): the card list, Use This Card action, and separate Save
+//   button created four layers of state. Highlighting required exact text equality; Save wrote only
+//   the body, not the card. Editing and saving left the card on its old text, appearing to lose edits.
+//   Switching required reaching across half the screen for Use This Card and resolving editor changes.
+//   The two most common actions (switch cards / save text) followed separate, mutually unaware paths.
+//   This version makes cards the **only body selector**:
+//   1. Cards are selectable chips: click to switch to the card body and apply immediately (one POST
+//      when the editor is clean). Unsaved edits offer three explicit choices: save and switch,
+//      save as a new card and switch, or discard and switch. Each explains its consequences,
+//      eliminating intermediate states where a click appears to do nothing.
+//   2. Save writes back to the **current card** (the source of the body), naming its destination
+//      directly on the button (Save to Card A and Apply); unassigned text uses Save and Apply.
+//      Cards are no longer one-time snapshots: edit, save, and card synchronization form a complete loop.
+//   3. New Card saves the current editor contents and activates them; branching uses Save as Card
+//      in the switch panel.
+//   4. Rename / Delete are inline actions on the Currently Active row, targeting the current card,
+//      rather than three buttons on every card.
+//   5. Preview collapses to one row; expanded, it switches between Full Official Prompt and Effective
+//      Prompt, taking space only when comparison is needed.
 //
-// 二、视觉：全套内核设计系统原语（Button / Switch / SegmentedControl / Input / Pill / Tag /
-//   DisclosureRow + 官方图标），颜色与圆角走 --dsw-* 变量 —— 与「内置插件」等既有设置页同语言，
-//   不再是自绘 checkbox / select。
+// 2. Visuals: core design-system primitives (Button / Switch / SegmentedControl / Input / Pill / Tag /
+//   DisclosureRow + official icons), with --dsw-* color and radius variables, matching existing settings
+//   pages such as Built-in Plugins instead of custom-drawn checkboxes / selects.
 //
-// 三、宿主与协议**完全不动**（lib/index.js、API_PROTO=3、$DSH_HOME/prompt-custom.json 文件格式
-//   全不变）：纯界面重做，老配置原样可用；宿主没重启（proto≠3）时卡片区照旧整体禁用并说清原因。
+// 3. Host and protocol **remain unchanged** (lib/index.js, API_PROTO=3, and the
+//   $DSH_HOME/prompt-custom.json format): UI-only redesign; existing configurations still work.
+//   Until the host restarts (proto != 3), the entire cards section stays disabled with an explanation.
 window.__ModuleLoader__.load({
   id: "@deepseek-ai/dsh-prompt-custom",
   factory: (require) => {
@@ -32,7 +38,7 @@ window.__ModuleLoader__.load({
 
     const react = require("react");
     const { jsx, jsxs } = require("react/jsx-runtime");
-    // 内核设计系统原语（与 dsh-wsl-settings 等伴随插件同款引入姿势：顶部一次性引入）。
+    // Core design-system primitives, imported once at the top as in companion plugins such as dsh-wsl-settings.
     const {
       Button, Switch, SegmentedControl, SegmentedTabs, Input, Pill, Tag, DisclosureRow, Modal,
       IconPlusOutlineRegular, IconChevronDownOutlineRegular,
@@ -48,187 +54,187 @@ window.__ModuleLoader__.load({
     const FINDINGS_MD_URL = "/api/dsh-prompt-custom/findings.md";
     const CAMPAIGNS_URL = "/api/dsh-prompt-custom/campaigns";
     const SESSIONS_URL = "/api/dsh-prompt-custom/sessions";
-    // 必须与 host 半边的 API_PROTO 一致。改协议号时**只改两处**：host 的 API_PROTO、这里的 EXPECT_PROTO。
+    // Must match the host API_PROTO. Change protocol numbers in **only two places**: host API_PROTO and EXPECT_PROTO here.
     // 3 (0.4.0): config added cards; 4 adds the prompt-free composer toggle route.
     const EXPECT_PROTO = 11;
 
     const L = {
-      nav: "自定义提示词",
-      title: "自定义提示词",
-      sub: "编辑注入内核的系统提示词：追加到默认人设之后，或整体替换默认人设。开关与注入方式即时生效；正文改动对下一次模型装配生效，无需新建会话。",
-      enabled: "启用自定义提示词",
-      enabledHint: "关闭后回落为官方默认提示词（即时生效，不需要点保存）",
-      toggleLabel: "富江破甲",
-      toggleError: "开关状态读取失败",
-      toggleRetry: "重试",
-      toggleOn: "已激活",
-      toggleOff: "未激活",
-      toggleLoading: "加载中",
-      knowledgeTitle: "知识库",
-      knowledgeHint: "CVE / PoC 语料随插件分发（离线，不下载、不联网）。开启后模型可在 skills 目录里直接调用这些分类技能；正文只在被调用时进入上下文，平时只占目录里的一行描述。",
-      knowledgeTotal: (n, m) => m + " 个分类 · " + n + " 条",
-      knowledgeOn: "已注入：模型可从 skills 目录直接调用这些分类。",
-      knowledgeOff: "已关闭：分类技能不在模型目录里，语料仍保留在插件目录。",
-      knowledgeEmpty: "还没有加载到分类。",
-      knowledgeRestart: "若刚更新过插件，请完全退出 DSH 再启动。",
-      knowledgeLoading: "加载中…",
-      reportTitle: "漏洞报告",
-      reportSub: "AI 在会话里找到的漏洞会写进这里（严重 / 高危 / 中危 / 低危 / 信息），可按严重度筛选、改状态、导出 Markdown。",
-      reportEmpty: "还没有任何条目。AI 找到漏洞后会自动写入；也可以直接用下面的命令手工补一条。",
-      reportTotal: (n, open) => "共 " + n + " 条 · 未修复 " + open,
-      reportAll: "全部",
-      reportExport: "导出 Markdown",
-      reportClear: "清空报告",
-      reportClearAsk: "清空整份漏洞报告？此操作立即生效且无法撤回。",
-      reportHint: "AI 写入方式（一条命令即可）",
-      reportStatusOpen: "未修复",
-      reportStatusFixed: "已修复",
-      reportStatusAccepted: "已接受风险",
-      reportStatusFalse: "误报",
-      reportDelete: "删除",
-      reportVerify: "已验证",
-      reportUnverified: "未验证",
-      reportLoading: "加载中…",
-      reportSearchPlaceholder: "搜索标题 / 目标 / URL / CVE",
-      reportNoMatch: "没有匹配的条目。",
-      reportUpdated: (t) => "最近更新 " + t,
-      reportSource: "来源",
+      nav: "Custom Prompts",
+      title: "Custom Prompts",
+      sub: "Edit the system prompt injected into the core: append it to the default persona or replace the persona entirely. The toggle and injection mode take effect immediately; text changes apply the next time the model is assembled, without starting a new session.",
+      enabled: "Enable custom prompts",
+      enabledHint: "Turning this off restores the official default prompt immediately; no save is needed.",
+      toggleLabel: "Fujiang Armor Breaker",
+      toggleError: "Failed to read toggle state",
+      toggleRetry: "Retry",
+      toggleOn: "Active",
+      toggleOff: "Inactive",
+      toggleLoading: "Loading",
+      knowledgeTitle: "Knowledge Base",
+      knowledgeHint: "CVE / PoC content ships with the plugin (offline, with no downloads or network access). When enabled, the model can invoke these category skills directly from the skills catalog. Their bodies enter context only when invoked; otherwise each occupies just one description line in the catalog.",
+      knowledgeTotal: (n, m) => m + " categories · " + n + " entries",
+      knowledgeOn: "Injected: the model can invoke these categories directly from the skills catalog.",
+      knowledgeOff: "Disabled: category skills are absent from the model catalog; the content remains in the plugin directory.",
+      knowledgeEmpty: "No categories have loaded yet.",
+      knowledgeRestart: "If you just updated the plugin, fully quit DSH and restart it.",
+      knowledgeLoading: "Loading…",
+      reportTitle: "Vulnerability Report",
+      reportSub: "Vulnerabilities the AI finds in sessions appear here (critical / high / medium / low / informational). Filter by severity, change statuses, and export Markdown.",
+      reportEmpty: "No entries yet. The AI writes findings automatically; you can also add one manually with the command below.",
+      reportTotal: (n, open) => n + " entries total · " + open + " open",
+      reportAll: "All",
+      reportExport: "Export Markdown",
+      reportClear: "Clear report",
+      reportClearAsk: "Clear the entire vulnerability report? This takes effect immediately and cannot be undone.",
+      reportHint: "How the AI writes findings (one command)",
+      reportStatusOpen: "Open",
+      reportStatusFixed: "Fixed",
+      reportStatusAccepted: "Risk accepted",
+      reportStatusFalse: "False positive",
+      reportDelete: "Delete",
+      reportVerify: "Verified",
+      reportUnverified: "Unverified",
+      reportLoading: "Loading…",
+      reportSearchPlaceholder: "Search title / target / URL / CVE",
+      reportNoMatch: "No matching entries.",
+      reportUpdated: (t) => "Last updated " + t,
+      reportSource: "Source",
       reportCvss: "CVSS",
-      reportDetailDescription: "描述",
-      reportDetailEvidence: "证据",
-      reportDetailRemediation: "修复建议",
-      reportDetailRefs: "参考",
-      reportAiHint: "AI 写入示例（复制即用）",
-      taskTitle: "渗透作业链",
-      taskNew: "新建任务",
-      taskEmpty: "还没有任务。任务只能由你在这里新建：填好目标域名/网段，AI 才会在任务里按「信息收集 → 指纹识别 → 漏洞匹配 → 可行性验证 → 漏洞利用 → 横向移动 → 报告输出」推进。",
-      taskLoading: "加载中…",
-      taskStage: "阶段",
-      taskNext: "下一阶段",
-      taskDelete: "删除任务",
-      taskDeleteAsk: "删除这个任务？台账会一起删掉，已写入漏洞报告的条目不受影响。",
-      taskAssets: "资产",
-      taskSteps: "步骤",
-      taskScope: "范围",
-      taskSuggest: "下一步建议",
-      taskNoAdvice: "台账里还没有可推进的内容：先写入资产（host/port/指纹）。",
-      taskNamePlaceholder: "任务名，例如 oa.example.com 外网打点",
-      taskPrev: "上一阶段",
-      taskObjective: "目标：",
-      taskDone: "标记完成",
-      taskDoneHint: "目标达成后点这里，自动续跑会停。",
-      taskBind: "绑定",
-      taskBindPick: "绑定到：",
-      taskKick: "让 AI 开始",
-      taskKicked: "已把「开始执行」推给 AI，它会先给计划。",
-      taskKickHint: "提示：",
-      taskUnbind: "解绑",
-      taskBound: "已绑定会话：",
-      taskUnbound: "未绑定对话：在对话输入框左侧的任务条里点「绑定任务」，只绑当前对话",
-      taskProgress: "进度",
-      taskScopePlaceholder: "目标范围：域名或 IP 段，逗号分隔（可留空，稍后补）",
-      taskCreate: "创建",
-      taskCancel: "取消",
-      taskCreateHint: "任务只能由你创建。创建后 AI 才能在任务里写资产、记步骤、推进阶段。",
-      pluginSettings: "富江破甲设置",
-      pluginFunctions: "插件功能",
-      pluginSettingsHint: "插件设置",
-      closeSettings: "关闭富江破甲设置",
-      skillsTitle: "技能库",
-      skillsEmpty: "还没有添加技能",
-      skillsEmptyHint: "添加的技能会显示在这里。",
-      mode: "注入方式",
-      modeHint: "追加 = 保留默认人设；替换 = 覆盖默认人设。切换即时生效（挂载点不同，会重新注入）。",
-      modeAppend: "追加到末尾",
-      modeReplace: "替换整体",
-      text: "提示词内容",
-      textHint: "按原样注入；可用 {{model}} {{cwd}} 等内核变量。",
-      savePlain: "保存并生效",
-      saveTo: (name) => "保存到「" + name + "」并生效",
-      revert: "还原改动",
-      saving: "应用中…",
-      saved: "已保存并生效",
-      savedToCard: (name) => "已保存到卡片「" + name + "」并生效。",
-      loading: "加载中…",
-      unavailable: "设置不可用（需要在本机浏览器中打开）",
-      dirtyTag: "未保存",
-      previewTitle: "预览",
-      previewOfficial: "官方全文",
-      previewEffective: "实际生效",
-      previewHintOfficial: "官方全文，不含本插件的自定义节 —— 对照着写替换内容用。",
-      previewHintEffective: "模型这一步真正看到的全文（已含自定义节）。",
-      previewReload: "重新加载",
-      previewing: "加载中…",
-      previewNoAgent: "当前没有活动会话，暂时只能看到全局视图；新建会话后再看「实际生效」更准。",
-      staleHost: "⚠ 界面与宿主插件版本不一致：页面已经刷新（新界面），但宿主进程没有重启（旧插件）。请**完全退出** DeepSeek Harness（含托盘/任务管理器里的残留进程）再启动 —— 只刷新页面不会重载宿主插件。重启之前：预览可能退化为旧接口的文本，提示词卡无法使用。",
-      unknownCfgKeys: (keys) => "⚠ 配置文件里有本版本不认识的字段：" + keys + "。这通常说明该文件是**另一个版本**的插件写的 —— 当前版本可能没有读到你先前的设置。请先备份配置文件再继续操作。",
-      previewError: "预览加载失败",
-      varWarn: (names) => "警告：这些变量内核不认识 —— " + names + "。内核遇到未知变量会直接报错，导致每一轮运行失败，请改成正确的变量名或删掉。",
-      varMalformed: (names) => "警告：这些引用写法不合法 —— " + names + "。变量名只能是 [a-z][a-z0-9_]*。",
-      storage: "配置文件",
-      stOff: "已停用：回落为官方默认提示词",
-      stArmed: "已启用：新建会话时自动注入",
-      stInjected: (n) => "已生效：当前 " + n + " 个会话已注入",
-      stError: (m) => "注入失败：" + m,
-      cardsTitle: "提示词卡",
-      cardsHint: "点卡片即切换并生效；正文改动用下方按钮写回当前卡。",
-      cardsAdd: "新建卡片",
-      cardsEmpty: "还没有提示词卡。把编辑好的提示词「新建卡片」存起来，之后点一下卡片就能切换。",
-      cardsVirtual: "当前正文",
-      cardsCurrent: (name, len) => "当前生效：卡片「" + name + "」 · " + len + " 字符",
-      cardsCurrentCustom: (len) => "当前正文：自定义（未存入卡片） · " + len + " 字符",
-      cardsCurrentNone: "当前正文为空",
-      cardsRename: "改名",
-      cardsRemove: "删除",
-      cardsRenameLabel: "新名字",
-      cardsNamePlaceholder: "给卡片起个名字（留空自动命名）",
-      cardsRenameSave: "保存名字",
-      cardsCancel: "取消",
-      cardsRemoveAsk: (name) => "删除卡片「" + name + "」？删除后无法撤回。",
-      cardsRemoveConfirm: "确认删除",
-      cardsAddHint: "存的是编辑框里的当前内容（含未保存改动），并存为当前生效。",
-      cardsSave: "存为卡片",
-      cardsNoteAdded: (name) => "已存为卡片「" + name + "」并生效。",
-      cardsNoteUsed: (name) => "已切换到卡片「" + name + "」并生效。",
-      cardsNoteSavedSwitched: (saved, used) => "已保存到卡片「" + saved + "」，并切换到「" + used + "」。",
-      cardsNoteForkedSwitched: (forked, used) => "已另存为新卡「" + forked + "」，并切换到「" + used + "」。",
-      cardsNoteRemoved: (name) => "卡片「" + name + "」已删除。",
-      cardsNoteRenamed: (name) => "卡片已改名为「" + name + "」。",
-      cardsUseDirty: "编辑框里有未保存的改动，切换卡片前先处置：",
-      cardsSwitchSave: (name) => "保存到「" + name + "」并切换",
-      cardsSwitchFork: "另存为卡片并切换",
-      cardsSwitchDiscard: "丢弃改动并切换",
-      cardsLimit: "卡片数量已达上限（最多 50 张）。",
-      cardsStale: "宿主插件还是旧版本，提示词卡暂时无法使用 —— 请完全退出 DeepSeek Harness 再启动后使用。"
+      reportDetailDescription: "Description",
+      reportDetailEvidence: "Evidence",
+      reportDetailRemediation: "Remediation",
+      reportDetailRefs: "References",
+      reportAiHint: "AI write example (copy and use)",
+      taskTitle: "Penetration Testing Workflow",
+      taskNew: "New campaign",
+      taskEmpty: "No campaigns yet. Only you can create one here: enter the target domain / network range before the AI can advance through Reconnaissance → Fingerprinting → Vulnerability Matching → Feasibility Validation → Exploitation → Lateral Movement → Reporting.",
+      taskLoading: "Loading…",
+      taskStage: "Stage",
+      taskNext: "Next stage",
+      taskDelete: "Delete campaign",
+      taskDeleteAsk: "Delete this campaign? Its ledger will also be deleted; entries already written to the vulnerability report are unaffected.",
+      taskAssets: "Assets",
+      taskSteps: "Steps",
+      taskScope: "Scope",
+      taskSuggest: "Suggested next steps",
+      taskNoAdvice: "Nothing in the ledger to advance yet: add assets first (host/port/fingerprint).",
+      taskNamePlaceholder: "Campaign name, e.g. oa.example.com external assessment",
+      taskPrev: "Previous stage",
+      taskObjective: "Objective: ",
+      taskDone: "Mark complete",
+      taskDoneHint: "Click here once the objective is achieved to stop automatic continuation.",
+      taskBind: "Bind",
+      taskBindPick: "Bind to: ",
+      taskKick: "Start AI",
+      taskKicked: "Sent the start instruction to the AI; it will provide a plan first.",
+      taskKickHint: "Tip: ",
+      taskUnbind: "Unbind",
+      taskBound: "Bound session: ",
+      taskUnbound: "No conversation bound: click Bind Campaign in the campaign bar to the left of the conversation input to bind only the current conversation.",
+      taskProgress: "Progress",
+      taskScopePlaceholder: "Target scope: domains or IP ranges, comma-separated (optional; add later)",
+      taskCreate: "Create",
+      taskCancel: "Cancel",
+      taskCreateHint: "Only you can create campaigns. Once created, the AI can add assets, record steps, and advance stages.",
+      pluginSettings: "Fujiang Armor Breaker Settings",
+      pluginFunctions: "Plugin Features",
+      pluginSettingsHint: "Plugin settings",
+      closeSettings: "Close Fujiang Armor Breaker settings",
+      skillsTitle: "Skill Library",
+      skillsEmpty: "No skills added yet",
+      skillsEmptyHint: "Added skills appear here.",
+      mode: "Injection mode",
+      modeHint: "Append preserves the default persona; Replace overrides it. Switching takes effect immediately (different mount points require reinjection).",
+      modeAppend: "Append to end",
+      modeReplace: "Replace entirely",
+      text: "Prompt content",
+      textHint: "Injected as written; core variables such as {{model}} and {{cwd}} are supported.",
+      savePlain: "Save and apply",
+      saveTo: (name) => "Save to “" + name + "” and apply",
+      revert: "Revert changes",
+      saving: "Applying…",
+      saved: "Saved and applied",
+      savedToCard: (name) => "Saved to card “" + name + "” and applied.",
+      loading: "Loading…",
+      unavailable: "Settings unavailable (open in a browser on this machine)",
+      dirtyTag: "Unsaved",
+      previewTitle: "Preview",
+      previewOfficial: "Full official prompt",
+      previewEffective: "Effective prompt",
+      previewHintOfficial: "The full official prompt without this plugin's custom section, for reference when writing replacement content.",
+      previewHintEffective: "The complete text the model actually sees at this step, including the custom section.",
+      previewReload: "Reload",
+      previewing: "Loading…",
+      previewNoAgent: "No active session: only the global view is available. After creating a session, Effective Prompt will be more accurate.",
+      staleHost: "⚠ UI and host plugin versions differ: the page has refreshed (new UI), but the host process has not restarted (old plugin). **Fully quit** DeepSeek Harness, including remaining tray / Task Manager processes, then restart. Refreshing the page alone does not reload the host plugin. Until restarting, previews may fall back to old API text and prompt cards are unavailable.",
+      unknownCfgKeys: (keys) => "⚠ This version does not recognize these configuration fields: " + keys + ". This usually means **another version** of the plugin wrote the file; this version may not have read your previous settings. Back up the configuration file before continuing.",
+      previewError: "Failed to load preview",
+      varWarn: (names) => "Warning: the core does not recognize these variables: " + names + ". Unknown variables cause errors in the core and fail every run. Correct their names or remove them.",
+      varMalformed: (names) => "Warning: these references are malformed: " + names + ". Variable names must match [a-z][a-z0-9_]*.",
+      storage: "Configuration file",
+      stOff: "Disabled: using the official default prompt",
+      stArmed: "Enabled: automatically injected into new sessions",
+      stInjected: (n) => "Applied: currently injected into " + n + " sessions",
+      stError: (m) => "Injection failed: " + m,
+      cardsTitle: "Prompt Cards",
+      cardsHint: "Click a card to switch and apply it. Use the button below to write text changes back to the current card.",
+      cardsAdd: "New card",
+      cardsEmpty: "No prompt cards yet. Save your edited prompt with New Card; then switch with a single click.",
+      cardsVirtual: "Current text",
+      cardsCurrent: (name, len) => "Currently active: card “" + name + "” · " + len + " characters",
+      cardsCurrentCustom: (len) => "Current text: custom (not saved to a card) · " + len + " characters",
+      cardsCurrentNone: "Current text is empty",
+      cardsRename: "Rename",
+      cardsRemove: "Delete",
+      cardsRenameLabel: "New name",
+      cardsNamePlaceholder: "Name the card (leave blank for an automatic name)",
+      cardsRenameSave: "Save name",
+      cardsCancel: "Cancel",
+      cardsRemoveAsk: (name) => "Delete card “" + name + "”? This cannot be undone.",
+      cardsRemoveConfirm: "Confirm deletion",
+      cardsAddHint: "Saves the current editor contents, including unsaved changes, and makes them active.",
+      cardsSave: "Save as card",
+      cardsNoteAdded: (name) => "Saved as card “" + name + "” and applied.",
+      cardsNoteUsed: (name) => "Switched to card “" + name + "” and applied.",
+      cardsNoteSavedSwitched: (saved, used) => "Saved to card “" + saved + "” and switched to “" + used + "”.",
+      cardsNoteForkedSwitched: (forked, used) => "Saved as new card “" + forked + "” and switched to “" + used + "”.",
+      cardsNoteRemoved: (name) => "Card “" + name + "” deleted.",
+      cardsNoteRenamed: (name) => "Card renamed to “" + name + "”.",
+      cardsUseDirty: "The editor has unsaved changes. Resolve them before switching cards:",
+      cardsSwitchSave: (name) => "Save to “" + name + "” and switch",
+      cardsSwitchFork: "Save as card and switch",
+      cardsSwitchDiscard: "Discard changes and switch",
+      cardsLimit: "Card limit reached (maximum 50).",
+      cardsStale: "The host plugin is still an older version, so prompt cards are unavailable. Fully quit DeepSeek Harness and restart it."
     };
 
-    /** 把 /config 返回的 armed / injected / lastError 翻成一句人能看懂的状态。 */
+    /** Turn armed / injected / lastError from /config into a readable status sentence. */
     function statusLine(st) {
       if (!st) return null;
       if (st.lastError) return { text: L.stError(st.lastError), tone: "error" };
-      // 旧版 host 不返回 armed/injected：这时无从判断，宁可不显示，
-      // 也不要因为 !undefined 而谎报「已停用」（跨版本混装时会反向骗人）。
+      // Older hosts omit armed/injected, so status is unknown. Show nothing rather than
+      // falsely reporting Disabled due to !undefined when mixing versions.
       if (st.armed === undefined && st.injected === undefined) return null;
       if (!st.armed) return { text: L.stOff, tone: "muted" };
       if (st.injected > 0) return { text: L.stInjected(st.injected), tone: "ok" };
       return { text: L.stArmed, tone: "muted" };
     }
 
-    // 提示词卡上限：必须与 host 的 MAX_CARDS 一致（宿主会截断，这里先把入口封住）。
+    // Prompt card limit: must match host MAX_CARDS (the host truncates; prevent additions here first).
     const CARDS_MAX = 50;
 
-    /** 卡片 id：本机自用、与后端无耦合；形状与 host 的 CARD_ID 校验正则配对。 */
+    /** Card IDs are local and decoupled from the backend; their format matches the host CARD_ID regex. */
     function newCardId() {
       return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     }
 
-    /** 名字建议：取第一行（去掉标题符号）截 24 字符；没有内容就按序号兜底。 */
+    /** Suggest a name: first line without heading markers, limited to 24 characters; fall back to a sequence number. */
     function suggestName(text, count) {
       const line = String(text || "")
         .split("\n")
         .map((s) => s.replace(/^#+\s*/, "").trim())
         .find((s) => s.length > 0) || "";
-      return line ? line.slice(0, 24) : "提示词卡 " + (count + 1);
+      return line ? line.slice(0, 24) : "Prompt card " + (count + 1);
     }
 
     function note(text, tone) {
@@ -246,7 +252,7 @@ window.__ModuleLoader__.load({
       });
     }
 
-    // 内联样式：颜色与圆角走内核设计系统变量（--dsw-*），与「内置插件」等既有设置页同语言。
+    // Inline styles use core design-system color and radius variables (--dsw-*), matching settings such as Built-in Plugins.
     const S = {
       root: { display: "flex", flexDirection: "column", gap: 14, padding: 16, maxWidth: 720 },
       head: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" },
@@ -293,8 +299,8 @@ window.__ModuleLoader__.load({
     const EMPTY = { enabled: false, mode: "append", text: "", cards: [] };
 
     function Card({ embedded = false, sessionId = "" } = {}) {
-      const [cfg, setCfg] = react.useState(EMPTY);           // 编辑框态（正文可能未保存）
-      const [savedCfg, setSavedCfg] = react.useState(EMPTY); // 服务端已保存的配置（卡片真值）
+      const [cfg, setCfg] = react.useState(EMPTY);           // Editor state (text may be unsaved)
+      const [savedCfg, setSavedCfg] = react.useState(EMPTY); // Server-saved configuration (card source of truth)
       const [state, setState] = react.useState("loading");
       const [busy, setBusy] = react.useState(false);
       const [notice, setNotice] = react.useState("");
@@ -304,19 +310,19 @@ window.__ModuleLoader__.load({
       const [vars, setVars] = react.useState({ unknown: [], malformed: [] });
       const [file, setFile] = react.useState("");
       const [st, setSt] = react.useState(null);
-      // 宿主进程没重启、页面却刷新过时，接口会缺字段（见 L.staleHost）。
+      // Fields may be missing when the page refreshes without a host restart (see L.staleHost).
       const [stale, setStale] = react.useState(false);
-      // 配置文件里有本版本不认识的键（配置 schema 演进的保护，见 L.unknownCfgKeys）。
+      // Configuration keys unknown to this version (schema evolution safeguard; see L.unknownCfgKeys).
       const [cfgKeys, setCfgKeys] = react.useState([]);
-      // 预览：默认收起，展开后按需拉取（懒加载，不常驻半屏高度）。
+      // Preview starts collapsed and loads on expansion, rather than permanently occupying half the screen.
       const [previewOpen, setPreviewOpen] = react.useState(false);
       const [previewKind, setPreviewKind] = react.useState("official");
       const [preview, setPreview] = react.useState(null);    // { kind, text, error }
       const [previewBusy, setPreviewBusy] = react.useState(false);
-      // 卡片区的瞬时 UI 状态（卡片真值只在 savedCfg.cards，这里全是过程态）。
-      const [adding, setAdding] = react.useState(false);    // 「新建卡片」面板展开
+      // Transient card UI state; savedCfg.cards alone is the source of truth, everything here is in-progress state.
+      const [adding, setAdding] = react.useState(false);    // New Card panel expanded
       const [newName, setNewName] = react.useState("");
-      const [pending, setPending] = react.useState(null);   // 待确认 { kind: "use"|"remove"|"rename", id }
+      const [pending, setPending] = react.useState(null);   // Awaiting confirmation: { kind: "use"|"remove"|"rename", id }
       const [renameText, setRenameText] = react.useState("");
 
       const applyStatus = (data) => {
@@ -325,7 +331,7 @@ window.__ModuleLoader__.load({
         setCfgKeys(data.unknownConfigKeys || []);
       };
 
-      // 尽最大努力识别"当前对话"：扫 localStorage 里含 session 的键，取第一个 session-<uuid>。
+      // Best-effort current conversation detection: scan localStorage keys containing session for the first session-<uuid>.
       const guessSession = () => {
         if (sessionIdHint) return sessionIdHint;
         try {
@@ -372,10 +378,10 @@ window.__ModuleLoader__.load({
           const resp = await fetch(PREVIEW_URL, { headers: { accept: "application/json" } });
           const data = await resp.json();
           if (!resp.ok || !data || data.ok === false) throw new Error((data && data.message) || ("HTTP " + resp.status));
-          // 宿主旧接口只有 text：退化为它，而不是显示一个空框让用户猜。
+          // Older host APIs return only text: fall back to that instead of an unexplained empty box.
           const fromNew = kind === "effective" ? data.effective : data.official;
           const text = fromNew !== undefined ? fromNew : data.text;
-          setPreview({ kind: kind, text: String(text || "(空)") });
+          setPreview({ kind: kind, text: String(text || "(empty)") });
           setStale(data.proto !== EXPECT_PROTO);
           applyStatus(data);
         } catch (e) {
@@ -383,19 +389,19 @@ window.__ModuleLoader__.load({
         } finally { setPreviewBusy(false); }
       }, []);
 
-      // preview 在 post 的闭包里会是旧值，用 ref 取当前显示的预览类型。
+      // post closes over stale preview state; use a ref for the currently displayed preview type.
       const previewRef = react.useRef(null);
       react.useEffect(() => { previewRef.current = preview; }, [preview]);
 
-      /** 统一的写入口。成功后对齐已保存态、刷新加载过的预览；失败返回 null 并把原文摆到界面上。 */
+      /** Shared write entry point: synchronize saved state and refresh loaded previews on success; on failure return null and show the original error text. */
       const post = async (body) => {
         const payload = {
           enabled: !!body.enabled,
           mode: body.mode === "replace" ? "replace" : "append",
           text: String(body.text || "")
         };
-        // cards 只按数组透传（卡片类操作才带）：正文/开关操作不碰卡片集，
-        // 宿主对「未提供」与「非数组」两侧都有保护（见 index.js 的 POST 路由）。
+        // Pass cards through only as arrays, and only for card operations; text/toggle operations leave cards alone.
+        // The host guards both missing and non-array values (see the POST route in index.js).
         if (Array.isArray(body.cards)) payload.cards = body.cards;
         setBusy(true); setNotice("");
         try {
@@ -409,7 +415,7 @@ window.__ModuleLoader__.load({
           setSavedCfg(data.config || body);
           applyStatus(data);
           const shown = previewRef.current;
-          if (shown && !shown.error) loadPreview(shown.kind); // 已加载过的预览不许停在旧文本上
+          if (shown && !shown.error) loadPreview(shown.kind); // Loaded previews must not retain stale text.
           return data;
         } catch (e) {
           setNotice(String((e && e.message) || e));
@@ -418,8 +424,8 @@ window.__ModuleLoader__.load({
       };
 
       /**
-       * 开关 / 模式即时生效。正文一律用**已保存**的那份，
-       * 避免把用户编辑到一半、还没点保存的内容偷偷写进去。
+       * Toggle / mode changes take effect immediately. Always use the **saved** text
+       * to avoid silently writing unfinished edits before the user clicks Save.
        */
       const applyShape = async (patch) => {
         const next = {
@@ -430,26 +436,26 @@ window.__ModuleLoader__.load({
         setCfg((prev) => Object.assign({}, prev, patch));
         const ok = await post(next);
         if (!ok) {
-          // 失败就把开关/模式拉回服务端真实状态，绝不让界面显示一个没生效的值。
+          // On failure, restore the server's actual toggle/mode state; never display an unapplied value.
           setCfg((prev) => Object.assign({}, prev, { enabled: savedCfg.enabled, mode: savedCfg.mode }));
         }
       };
 
-      // ---- 派生状态 ----
-      const liveText = String(savedCfg.text || "");   // 已保存正文（模型真正吃到的）
-      const editorText = String(cfg.text || "");      // 编辑框里的（可能未保存）
+      // ---- Derived state ----
+      const liveText = String(savedCfg.text || "");   // Saved text (what the model actually receives)
+      const editorText = String(cfg.text || "");      // Editor text (possibly unsaved)
       const dirtyText = editorText !== liveText;
       const cards = Array.isArray(savedCfg.cards) ? savedCfg.cards : [];
-      // 「当前卡」= 已保存正文恰好等于某张卡的文本；空正文不认卡（避免把空卡误标高亮）。
+      // Current card = exact match with saved text; empty text matches no card to avoid highlighting empty cards.
       const activeCard = liveText !== ""
         ? (cards.find((c) => String(c.text || "") === liveText) || null)
         : null;
       const pendingCard = pending ? (cards.find((c) => c.id === pending.id) || null) : null;
-      const cardsGated = busy || stale;               // stale = 旧宿主会静默丢 cards，一律禁写
+      const cardsGated = busy || stale;               // Old hosts silently drop cards when stale: block all writes.
       const cardUiBusy = cardsGated || !!pendingCard || adding;
       const saveLabel = (activeCard && !stale) ? L.saveTo(activeCard.name) : L.savePlain;
 
-      /** 切换：把该卡文本设为「已保存正文」并立即生效（成功回应才动编辑框）。 */
+      /** Switch: save and immediately apply the card text; update the editor only after a successful response. */
       const applyCardText = async (card) => {
         const text = String(card.text || "");
         const ok = await post({ enabled: savedCfg.enabled, mode: savedCfg.mode, text: text });
@@ -461,15 +467,15 @@ window.__ModuleLoader__.load({
         return ok;
       };
 
-      /** 点芯片：切换并立即生效；编辑框有未保存改动时先停下，三个出口都摆明后果。 */
+      /** Chip click: switch and apply immediately; pause for unsaved edits and explain all three choices. */
       const useCard = (card) => {
         if (cardUiBusy || !card) return;
-        if (activeCard && card.id === activeCard.id) return; // 点当前卡＝无操作
+        if (activeCard && card.id === activeCard.id) return; // Clicking the current card is a no-op.
         if (dirtyText) { setCardNotice(""); setPending({ kind: "use", id: card.id }); return; }
         return applyCardText(card);
       };
 
-      /** 三选①「保存到当前卡并切换」：一次 POST 写回当前卡 + 切到目标卡。 */
+      /** Choice 1, Save to Current Card and Switch: one POST updates the current card and selects the target. */
       const switchSaving = async () => {
         const target = pendingCard;
         if (!target || !activeCard || cardsGated) return;
@@ -484,7 +490,7 @@ window.__ModuleLoader__.load({
         }
       };
 
-      /** 三选②「另存为卡片并切换」：编辑框内容存为新卡，再切到目标卡（一次 POST）。 */
+      /** Choice 2, Save as Card and Switch: save editor contents as a new card, then select the target in one POST. */
       const switchForking = async () => {
         const target = pendingCard;
         if (!target || cardsGated || cards.length >= CARDS_MAX) return;
@@ -501,7 +507,7 @@ window.__ModuleLoader__.load({
         }
       };
 
-      /** 三选③「丢弃改动并切换」：直接切到目标卡，未保存编辑随成功回应被覆盖。 */
+      /** Choice 3, Discard and Switch: select the target directly; a successful response overwrites unsaved edits. */
       const switchDiscarding = () => {
         const target = pendingCard;
         if (!target || cardsGated) return;
@@ -518,7 +524,7 @@ window.__ModuleLoader__.load({
 
       const cancelAdd = () => { setAdding(false); setNewName(""); };
 
-      /** 「存为卡片」：存的是编辑框当前内容（含未保存改动），并成为当前生效。 */
+      /** Save as Card: save the current editor contents, including unsaved changes, and activate them. */
       const submitAdd = async () => {
         if (cardsGated || cards.length >= CARDS_MAX) return;
         const name = newName.trim() || suggestName(editorText, cards.length);
@@ -540,7 +546,7 @@ window.__ModuleLoader__.load({
         setPending({ kind: "rename", id: card.id });
       };
 
-      /** 改名：只动名字，正文与其他字段不动。 */
+      /** Rename changes only the name, leaving the text and other fields untouched. */
       const submitRename = async () => {
         const target = pendingCard;
         if (!target || cardsGated) return;
@@ -561,7 +567,7 @@ window.__ModuleLoader__.load({
         setPending({ kind: "remove", id: card.id });
       };
 
-      /** 删除：二次确认后写盘；删的是当前卡时正文留在原地（只是不再属于任何卡）。 */
+      /** Delete writes to disk after confirmation; deleting the current card leaves its text in place, unassigned. */
       const submitRemove = async () => {
         const target = pendingCard;
         if (!target || cardsGated) return;
@@ -576,8 +582,8 @@ window.__ModuleLoader__.load({
       };
 
       /**
-       * 保存正文：正文来自某张卡时**同时写回该卡**（编辑→保存→卡片同步的闭环）；
-       * stale（旧宿主不认 cards）时只保存正文，不演「存了卡片」。
+       * Save text: if it comes from a card, **update that card too**, completing the edit/save/synchronize loop.
+       * When stale (old host does not recognize cards), save only text; do not pretend the card was saved.
        */
       const save = async () => {
         if (busy) return;
@@ -588,10 +594,10 @@ window.__ModuleLoader__.load({
         if (ok && !ok.lastError) setNotice(target ? L.savedToCard(target.name) : L.saved);
       };
 
-      /** 还原改动：编辑框拉回已保存正文（不动服务端）。 */
+      /** Revert changes: restore saved text in the editor without touching the server. */
       const revert = () => setCfg((prev) => Object.assign({}, prev, { text: liveText }));
 
-      /** 展开预览时懒加载一次；已加载过的不重复抓（改动生效时 post 会自动刷新）。 */
+      /** Lazy-load preview on expansion, once; post automatically refreshes loaded previews when changes apply. */
       const togglePreview = () => {
         const next = !previewOpen;
         setPreviewOpen(next);
@@ -609,7 +615,7 @@ window.__ModuleLoader__.load({
       return jsxs("div", {
         style: embedded ? Object.assign({}, S.root, { maxWidth: "none", padding: 24 }) : S.root,
         children: [
-          // —— 标题行：标题 + 当前生效状态 ——
+          // —— Header: title + currently active status ——
           jsxs("div", {
             style: S.head,
             children: [
@@ -624,7 +630,7 @@ window.__ModuleLoader__.load({
           stale ? note(L.staleHost, "error") : null,
           cfgKeys.length ? note(L.unknownCfgKeys(cfgKeys.map((k) => "`" + k + "`").join("、")), "error") : null,
 
-          // —— 注入行为（即时生效） ——
+          // —— Injection behavior (immediate) ——
           jsxs("div", {
             style: S.row,
             children: [
@@ -655,7 +661,7 @@ window.__ModuleLoader__.load({
             ]
           }),
 
-          // —— 提示词卡：点选切换 + 新建 ——
+          // —— Prompt cards: click to switch + create ——
           jsxs("div", {
             style: S.field,
             children: [
@@ -684,7 +690,7 @@ window.__ModuleLoader__.load({
                     key: card.id,
                     active: activeCard ? card.id === activeCard.id : false,
                     disabled: cardUiBusy,
-                    title: String(card.text || "").length + " 字符",
+                    title: String(card.text || "").length + " characters",
                     onClick: () => useCard(card),
                     children: card.name
                   })),
@@ -711,7 +717,7 @@ window.__ModuleLoader__.load({
                   }) : null
                 ]
               }),
-              // 行内面板：新建 / 切换三选 / 改名 / 删除，同一时刻只会有一个。
+              // Inline panels: create / three switch choices / rename / delete; only one is open at a time.
               adding ? jsxs("div", {
                 style: S.panel,
                 children: [
@@ -773,7 +779,7 @@ window.__ModuleLoader__.load({
             ]
           }),
 
-          // —— 正文编辑 ——
+          // —— Text editor ——
           jsxs("div", {
             style: S.field,
             children: [
@@ -799,17 +805,17 @@ window.__ModuleLoader__.load({
             ]
           }),
 
-          // —— 变量告警（内核 renderPrompt 遇到未知变量会抛错，这里必须提前说） ——
+          // —— Variable warnings (core renderPrompt throws on unknown variables; warn in advance) ——
           vars.malformed.length ? note(L.varMalformed(vars.malformed.map((n) => "{{" + n + "}}").join("、")), "warn") : null,
           vars.unknown.length ? note(L.varWarn(vars.unknown.map((n) => "{{" + n + "}}").join("、")), "warn") : null,
 
-          // —— 预览（折叠一行，展开后按需拉取） ——
+          // —— Preview (one collapsed row; fetch on demand when expanded) ——
           jsx(DisclosureRow, {
             icon: jsx(IconChevronDownOutlineRegular, {}),
             title: L.previewTitle,
             open: previewOpen,
             expandable: true,
-            // 整行可点 + 键盘可达（默认 false 只剩行首小箭头按钮，太小、难发现）。
+            // Make the entire row clickable and keyboard-accessible; default false leaves only a tiny, hard-to-find leading arrow.
             expandOnRowClick: true,
             onToggle: togglePreview,
             children: previewOpen ? [
@@ -911,7 +917,7 @@ window.__ModuleLoader__.load({
 
     const REA_CATALOG = {
       id: "rea",
-      name: "逆向破解",
+      name: "Reverse Engineering",
       projectName: "Reverse Engineer Anything (REA)",
       repositoryUrl: "https://github.com/morluto/rea",
       installUrl: "https://registry.npmjs.org/rea-agents/latest",
@@ -927,7 +933,7 @@ window.__ModuleLoader__.load({
 
     const ABOUTSECURITY_CATALOG = {
       id: "aboutsecurity",
-      name: "渗透测试",
+      name: "Penetration Testing",
       projectName: "WgpSec AboutSecurity",
       repositoryUrl: "https://github.com/wgpsec/AboutSecurity",
       installUrl: "https://codeload.github.com/wgpsec/AboutSecurity/zip/refs/heads/master",
@@ -941,11 +947,11 @@ window.__ModuleLoader__.load({
       progress: null,
       tools: 0
     };
-    // 知识库：语料随插件分发（plugin/knowledge/），没有下载、没有安装、没有删除。
+    // Knowledge base: content ships with the plugin (plugin/knowledge/); no download, installation, or deletion.
     const KNOWLEDGE_CATALOG = {
       id: "knowledge",
-      name: "知识库",
-      projectName: "CVE / PoC 漏洞知识库",
+      name: "Knowledge Base",
+      projectName: "CVE / PoC Vulnerability Knowledge Base",
       repositoryUrl: null,
       installUrl: null,
       installed: true,
@@ -979,13 +985,13 @@ window.__ModuleLoader__.load({
 
       const decode = async (resp) => {
         if (resp.status === 404 || resp.status === 501 || resp.status === 503) {
-          throw new Error("技能库暂不可用，请更新插件并完全重启 DSH。");
+          throw new Error("Skill library unavailable. Update the plugin and fully restart DSH.");
         }
         let data;
-        try { data = await resp.json(); } catch { throw new Error("技能库状态读取失败，请重试。"); }
+        try { data = await resp.json(); } catch { throw new Error("Failed to read skill library status. Please retry."); }
         const skills = data && Array.isArray(data.skills) ? data.skills.filter((item) => item && SKILL_IDS.has(item.id)) : null;
         if (!resp.ok || !data || data.ok === false || !skills || !skills.length) {
-          const failure = new Error(data && data.message ? String(data.message).slice(0, 180) : "技能库操作失败，请重试。");
+          const failure = new Error(data && data.message ? String(data.message).slice(0, 180) : "Skill library operation failed. Please retry.");
           // Conflict responses can include the authoritative in-progress snapshot.
           // Keep it so the card follows the existing operation instead of its stale state.
           if (skills && skills.length) failure.skills = skills;
@@ -1014,7 +1020,7 @@ window.__ModuleLoader__.load({
           } catch (cause) {
             if (cancelled) return;
             setLoading(false);
-            setError(String(cause && cause.message || "技能库状态读取失败，请重试。"));
+            setError(String(cause && cause.message || "Failed to read skill library status. Please retry."));
             if (cause && cause.skills) {
               setItems(cause.skills);
               if (cause.skills.some((skill) => skill.busy)) timer = setTimeout(refresh, 1500);
@@ -1044,7 +1050,7 @@ window.__ModuleLoader__.load({
           setRefreshIndex((current) => current + 1);
         } catch (cause) {
           if (mounted.current) {
-            setError(String(cause && cause.message || "技能库操作失败，请重试。"));
+            setError(String(cause && cause.message || "Skill library operation failed. Please retry."));
             if (cause && cause.skills) {
               setItems(cause.skills);
               if (cause.skills.some((item) => item.busy)) setRefreshIndex((current) => current + 1);
@@ -1056,15 +1062,15 @@ window.__ModuleLoader__.load({
         }
       };
 
-      // 知识库已经挪到独立页签，技能库这里只列需要下载的库。
+      // The knowledge base now has its own tab; list only downloadable libraries here.
       const visible = (items.length ? items : SKILL_CATALOG).filter((item) => item.id !== "knowledge");
       const phaseLabel = (skill) => {
-        if (loading) return "读取中…";
+        if (loading) return "Loading…";
         const phases = {
-          not_installed: "未安装", installing: "下载中…", cancelling: "取消中…", enabling: "注入中…",
-          disabling: "关闭中…", deleting: "删除中…", cancelled: "已取消", ready: "已启用", disabled: "已关闭", error: "失败"
+          not_installed: "Not installed", installing: "Downloading…", cancelling: "Cancelling…", enabling: "Injecting…",
+          disabling: "Disabling…", deleting: "Deleting…", cancelled: "Cancelled", ready: "Enabled", disabled: "Disabled", error: "Failed"
         };
-        return phases[skill.phase] || (skill.enabled ? "已启用" : skill.installed ? "已关闭" : "未安装");
+        return phases[skill.phase] || (skill.enabled ? "Enabled" : skill.installed ? "Disabled" : "Not installed");
       };
       const formatBytes = (value) => {
         if (value == null || value === "") return null;
@@ -1084,9 +1090,9 @@ window.__ModuleLoader__.load({
         const percent = determinate ? Math.round(percentValue) : null;
         const received = formatBytes(progress.receivedBytes);
         const total = formatBytes(progress.totalBytes);
-        const amount = received && total ? received + " / " + total : received ? received + " 已下载" : null;
-        const stages = { metadata: "连接官方来源", package: "下载 REA", archive: "下载技能库", extracting: "解压技能文件", download: "下载 REA", dependencies: "安装依赖", install: "安装依赖", registering: "注册技能与工具", cancelling: "正在取消" };
-        const stage = stages[progress.stage] || (typeof progress.stage === "string" && progress.stage ? progress.stage : skill.message || "正在下载并安装");
+        const amount = received && total ? received + " / " + total : received ? received + " downloaded" : null;
+        const stages = { metadata: "Connecting to official source", package: "Downloading REA", archive: "Downloading skill library", extracting: "Extracting skill files", download: "Downloading REA", dependencies: "Installing dependencies", install: "Installing dependencies", registering: "Registering skills and tools", cancelling: "Cancelling" };
+        const stage = stages[progress.stage] || (typeof progress.stage === "string" && progress.stage ? progress.stage : skill.message || "Downloading and installing");
         return { determinate, percent, amount, stage, value: determinate ? percent : undefined };
       };
 
@@ -1097,16 +1103,16 @@ window.__ModuleLoader__.load({
             className: "dsh-fuj-skills-heading",
             children: [
               jsx("h3", { children: L.skillsTitle }),
-              jsx("span", { className: "dsh-fuj-skills-count", children: "已安装 " + visible.filter((item) => item.installed).length + " / " + visible.length })
+              jsx("span", { className: "dsh-fuj-skills-count", children: "Installed " + visible.filter((item) => item.installed).length + " / " + visible.length })
             ]
           }),
-          jsx("p", { className: "dsh-fuj-skills-caption", children: "知识库随插件内置（CVE / PoC 语料，离线）；其余技能从官方来源下载安装。开启后即可在对话中使用。" }),
+          jsx("p", { className: "dsh-fuj-skills-caption", children: "The knowledge base is bundled with the plugin (offline CVE / PoC content); other skills download and install from official sources. Enable them to use them in conversations." }),
           error ? jsxs("div", {
             role: "alert",
             className: "dsh-fuj-skills-error",
             children: [
               jsx("span", { children: error }),
-              jsx(Button, { variant: "ghost", size: "sm", onClick: () => setRefreshIndex((value) => value + 1), disabled: !!actionId, children: "重试" })
+              jsx(Button, { variant: "ghost", size: "sm", onClick: () => setRefreshIndex((value) => value + 1), disabled: !!actionId, children: "Retry" })
             ]
           }) : null,
           visible.map((skill) => {
@@ -1135,14 +1141,14 @@ window.__ModuleLoader__.load({
                         jsxs("div", {
                           className: "dsh-fuj-skill-source",
                           children: skill.id === "knowledge" ? [
-                            jsx("span", { className: "dsh-fuj-skill-hint", children: "随插件分发的离线语料" }),
-                            skill.skillCount ? jsx("span", { className: "dsh-fuj-skill-hint", children: skill.skillCount + " 个分类" }) : null,
-                            skill.entries ? jsx("span", { className: "dsh-fuj-skill-hint", children: skill.entries + " 条漏洞" }) : null
+                            jsx("span", { className: "dsh-fuj-skill-hint", children: "Offline content bundled with the plugin" }),
+                            skill.skillCount ? jsx("span", { className: "dsh-fuj-skill-hint", children: skill.skillCount + " categories" }) : null,
+                            skill.entries ? jsx("span", { className: "dsh-fuj-skill-hint", children: skill.entries + " vulnerabilities" }) : null
                           ] : [
                             jsx("a", { href: skill.repositoryUrl || "#", target: "_blank", rel: "noreferrer noopener", children: skill.id === "rea" ? "morluto/rea ↗" : "wgpsec/AboutSecurity ↗" }),
-                            jsx("a", { href: skill.installUrl || skill.repositoryUrl || "#", target: "_blank", rel: "noreferrer noopener", children: "最新版下载链接 ↗" }),
+                            jsx("a", { href: skill.installUrl || skill.repositoryUrl || "#", target: "_blank", rel: "noreferrer noopener", children: "Download latest version ↗" }),
                             skill.version ? jsx("span", { className: "dsh-fuj-skill-hint", children: "v" + skill.version }) : null,
-                            skill.skillCount ? jsx("span", { className: "dsh-fuj-skill-hint", children: skill.skillCount + " 个技能" }) : null
+                            skill.skillCount ? jsx("span", { className: "dsh-fuj-skill-hint", children: skill.skillCount + " skills" }) : null
                           ]
                         })
                       ]
@@ -1157,11 +1163,11 @@ window.__ModuleLoader__.load({
                     className: "dsh-fuj-skill-progress",
                     "data-indeterminate": !progress.determinate,
                     role: "group",
-                    "aria-label": (skill.projectName || skill.name || "技能") + "下载进度",
+                    "aria-label": (skill.projectName || skill.name || "Skill") + " download progress",
                     children: [
-                      jsx("progress", { className: "dsh-fuj-skill-progress-track", max: 100, value: progress.value, "aria-label": "下载安装进度" }),
+                      jsx("progress", { className: "dsh-fuj-skill-progress-track", max: 100, value: progress.value, "aria-label": "Download and installation progress" }),
                       jsx("span", { className: "dsh-fuj-skill-progress-stage", children: label || progress.stage }),
-                      jsx("span", { className: "dsh-fuj-skill-progress-value", children: progress.percent === null ? "处理中…" : progress.percent + "%" })
+                      jsx("span", { className: "dsh-fuj-skill-progress-value", children: progress.percent === null ? "Processing…" : progress.percent + "%" })
                     ]
                   });
                 })() : null,
@@ -1170,31 +1176,31 @@ window.__ModuleLoader__.load({
                   children: [
                     jsx("span", {
                       className: "dsh-fuj-skill-hint",
-                      children: skill.busy ? "操作完成后会自动更新状态。"
+                      children: skill.busy ? "Status updates automatically when the operation finishes."
                         : skill.id === "knowledge"
-                          ? (skill.enabled ? "已注入：模型可从 skills 目录直接调用这些分类。" : "内置语料：开启后模型即可在 skills 目录里看到并调用。")
-                          : skill.enabled ? "已注入，可在对话中使用。" : skill.installed ? "开启后注入，关闭时保留下载文件。" : "从官方来源下载并自动安装。"
+                          ? (skill.enabled ? "Injected: the model can invoke these categories directly from the skills catalog." : "Bundled content: enable it so the model can find and invoke it in the skills catalog.")
+                          : skill.enabled ? "Injected and available in conversations." : skill.installed ? "Injected when enabled; downloaded files are kept when disabled." : "Downloads from the official source and installs automatically."
                     }),
                     skill.busy && skill.phase === "installing" && skill.canCancel === true ? jsx(Button, {
                       variant: "ghost", size: "sm", className: "dsh-fuj-skill-cancel",
                       disabled: actionId === skill.id,
                       onClick: () => act(skill, "cancel"),
-                      children: actionId === skill.id ? "正在取消…" : "取消下载"
+                      children: actionId === skill.id ? "Cancelling…" : "Cancel download"
                     }) : skill.installed ? jsxs("div", {
                       className: "dsh-fuj-skill-actions",
                       children: [
                         jsxs("div", {
                           className: "dsh-fuj-skill-enable",
                           children: [
-                            jsx("span", { children: skill.enabled ? "已开启" : "已关闭" }),
-                            jsx(Switch, { label: "启用" + (skill.name || "技能"), checked: !!skill.enabled, disabled: busy || unavailable, onChange: (next) => act(skill, next ? "enable" : "disable") })
+                            jsx("span", { children: skill.enabled ? "Enabled" : "Disabled" }),
+                            jsx(Switch, { label: "Enable " + (skill.name || "skill"), checked: !!skill.enabled, disabled: busy || unavailable, onChange: (next) => act(skill, next ? "enable" : "disable") })
                           ]
                         }),
-                        skill.id === "knowledge" ? null : jsx(Button, { variant: "ghost", size: "sm", disabled: busy || unavailable, onClick: () => act(skill, "delete"), children: "删除" })
+                        skill.id === "knowledge" ? null : jsx(Button, { variant: "ghost", size: "sm", disabled: busy || unavailable, onClick: () => act(skill, "delete"), children: "Delete" })
                       ]
                     }) : jsx(Button, {
                       variant: "primary", size: "sm", disabled: busy || unavailable,
-                      onClick: () => act(skill, "install"), children: skill.busy ? phaseLabel(skill) : "下载安装"
+                      onClick: () => act(skill, "install"), children: skill.busy ? phaseLabel(skill) : "Download and install"
                     })
                   ]
                 })
@@ -1205,7 +1211,7 @@ window.__ModuleLoader__.load({
       });
     }
 
-    const STAGE_LABEL = { recon: "信息收集", fingerprint: "指纹识别", match: "漏洞匹配", verify: "可行性验证", exploit: "漏洞利用", lateral: "横向移动", report: "报告输出" };
+    const STAGE_LABEL = { recon: "Reconnaissance", fingerprint: "Fingerprinting", match: "Vulnerability Matching", verify: "Feasibility Validation", exploit: "Exploitation", lateral: "Lateral Movement", report: "Reporting" };
     const STAGE_ORDER = ["recon", "fingerprint", "match", "verify", "exploit", "lateral", "report"];
 
     function CampaignPanel({ active, sessionIdHint }) {
@@ -1221,7 +1227,7 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = react.useState(false);
       const [error, setError] = react.useState("");
 
-      // 尽最大努力识别"当前对话"：扫 localStorage 里含 session 的键，取第一个 session-<uuid>。
+      // Best-effort current conversation detection: scan localStorage keys containing session for the first session-<uuid>.
       const guessSession = () => {
         if (sessionIdHint) return sessionIdHint;
         try {
@@ -1336,7 +1342,7 @@ window.__ModuleLoader__.load({
           error ? jsxs("div", {
             role: "alert",
             className: "dsh-fuj-skills-error",
-            children: [jsx("span", { children: error }), jsx(Button, { variant: "ghost", size: "sm", onClick: load, disabled: busy, children: "重试" })]
+            children: [jsx("span", { children: error }), jsx(Button, { variant: "ghost", size: "sm", onClick: load, disabled: busy, children: "Retry" })]
           }) : null,
           creating ? jsxs("article", {
             className: "dsh-fuj-skill-card",
@@ -1385,7 +1391,7 @@ window.__ModuleLoader__.load({
                 expanded && current ? jsxs("div", {
                   style: { borderTop: "1px solid var(--dsw-alias-border-l3)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 10 },
                   children: [
-                    jsx("div", { style: { fontSize: 13, lineHeight: "20px", fontWeight: 600 }, children: (current.done ? "✓ 已达成 · " : "") + L.taskObjective + (current.objective || current.name) }),
+                    jsx("div", { style: { fontSize: 13, lineHeight: "20px", fontWeight: 600 }, children: (current.done ? "✓ Achieved · " : "") + L.taskObjective + (current.objective || current.name) }),
                     stageBar(current.stage),
                     notice ? jsx("div", { style: { fontSize: 12, lineHeight: "18px", color: "var(--dsw-alias-label-secondary)" }, children: notice }) : null,
                     current.sessionId
@@ -1399,14 +1405,14 @@ window.__ModuleLoader__.load({
                               onChange: (e) => setPick(e.target.value),
                               style: { height: 28, borderRadius: 6, border: "1px solid var(--dsw-alias-border-l3)", background: "var(--dsw-alias-bg-layer-2)", color: "inherit", fontSize: 12, maxWidth: 260 }
                             }, sessions.length
-                              ? sessions.map((x, i) => jsx("option", { value: x.id, title: x.id, children: (x.id === guessSession() ? "★ " : "") + (x.title ? x.title.slice(0, 24) : "对话 " + (i + 1)) + " · " + x.id.slice(-8) + (x.status === "running" ? "（运行中）" : "") }, x.id))
-                              : jsx("option", { value: "", children: "没有在线对话" })),
+                              ? sessions.map((x, i) => jsx("option", { value: x.id, title: x.id, children: (x.id === guessSession() ? "★ " : "") + (x.title ? x.title.slice(0, 24) : "Conversation " + (i + 1)) + " · " + x.id.slice(-8) + (x.status === "running" ? " (running)" : "") }, x.id))
+                              : jsx("option", { value: "", children: "No online conversations" })),
                             jsx(Button, { variant: "ghost", size: "sm", disabled: busy || !pick, onClick: () => post({ action: "bind", id: current.id, sessionId: pick }), children: L.taskBind }),
-                            jsx(Button, { variant: "ghost", size: "sm", disabled: busy, onClick: loadSessions, children: "刷新" })
+                            jsx(Button, { variant: "ghost", size: "sm", disabled: busy, onClick: loadSessions, children: "Refresh" })
                           ]
                         }),
                     jsx("div", { style: { fontSize: 12, color: "var(--dsw-alias-label-tertiary)", overflowWrap: "anywhere" }, children: L.taskScope + "：" + ([current.scope.domains, current.scope.cidrs].flat().filter(Boolean).join(" · ") || "-") }),
-                    sessionIdHint ? jsx("div", { style: { fontSize: 12, color: "var(--dsw-alias-label-secondary)", overflowWrap: "anywhere" }, children: "面板识别到的对话：" + sessionIdHint }) : null,
+                    sessionIdHint ? jsx("div", { style: { fontSize: 12, color: "var(--dsw-alias-label-secondary)", overflowWrap: "anywhere" }, children: "Conversation detected by the panel: " + sessionIdHint }) : null,
                     jsx("div", { style: { fontSize: 12, lineHeight: "18px" }, children: current.assets.length ? current.assets.map((a) => a.host + (a.port ? ":" + a.port : "") + (a.fingerprint ? "（" + a.fingerprint + "）" : "") + " · " + (a.status || "new")).join("\n") : L.taskNoAdvice }),
                     jsx("div", { style: { fontSize: 12, lineHeight: "18px", whiteSpace: "pre-wrap" }, children: current.steps.length ? current.steps.slice(-5).map((st) => "[" + (STAGE_LABEL[st.stage] || st.stage) + "] " + st.action + " → " + st.result).join("\n") : "" }),
                     jsxs("div", {
@@ -1438,7 +1444,7 @@ window.__ModuleLoader__.load({
                             if (confirmDelete !== current.id) { setConfirmDelete(current.id); setTimeout(() => setConfirmDelete(""), 4000); return; }
                             setConfirmDelete(""); post({ action: "delete", id: current.id });
                           },
-                          children: confirmDelete === current.id ? "确认删除？" : L.taskDelete
+                          children: confirmDelete === current.id ? "Confirm deletion?" : L.taskDelete
                         })
                       ]
                     })
@@ -1453,11 +1459,11 @@ window.__ModuleLoader__.load({
       });
     }
     const SEVERITY_META = {
-      critical: { label: "严重", color: "#b42318", bg: "rgba(180,35,24,.08)" },
-      high: { label: "高危", color: "#d92d20", bg: "rgba(217,45,32,.08)" },
-      medium: { label: "中危", color: "#b54708", bg: "rgba(181,71,8,.08)" },
-      low: { label: "低危", color: "#175cd3", bg: "rgba(23,92,211,.08)" },
-      info: { label: "信息", color: "#475467", bg: "rgba(71,84,103,.08)" }
+      critical: { label: "Critical", color: "#b42318", bg: "rgba(180,35,24,.08)" },
+      high: { label: "High", color: "#d92d20", bg: "rgba(217,45,32,.08)" },
+      medium: { label: "Medium", color: "#b54708", bg: "rgba(181,71,8,.08)" },
+      low: { label: "Low", color: "#175cd3", bg: "rgba(23,92,211,.08)" },
+      info: { label: "Informational", color: "#475467", bg: "rgba(71,84,103,.08)" }
     };
     const SEVERITY_ORDER = ["critical", "high", "medium", "low", "info"];
     const STATUS_LABEL = { open: L.reportStatusOpen, fixed: L.reportStatusFixed, accepted: L.reportStatusAccepted, "false-positive": L.reportStatusFalse };
@@ -1479,7 +1485,7 @@ window.__ModuleLoader__.load({
       const [hintOpen, setHintOpen] = react.useState(false);
       const [confirmClear, setConfirmClear] = react.useState(false);
 
-      // 尽最大努力识别"当前对话"：扫 localStorage 里含 session 的键，取第一个 session-<uuid>。
+      // Best-effort current conversation detection: scan localStorage keys containing session for the first session-<uuid>.
       const guessSession = () => {
         if (sessionIdHint) return sessionIdHint;
         try {
@@ -1636,7 +1642,7 @@ window.__ModuleLoader__.load({
               jsx(Button, {
                 variant: "ghost", size: "sm", disabled: busy || !stats.total,
                 onClick: () => { if (!confirmClear) { setConfirmClear(true); setTimeout(() => setConfirmClear(false), 4000); return; } setConfirmClear(false); post({ action: "clear" }); },
-                children: confirmClear ? "确认清空？" : L.reportClear
+                children: confirmClear ? "Confirm clearing?" : L.reportClear
               })
             ]
           }),
@@ -1646,7 +1652,7 @@ window.__ModuleLoader__.load({
             style: { marginTop: 8 },
             children: [
               jsx("span", { children: error }),
-              jsx(Button, { variant: "ghost", size: "sm", onClick: load, disabled: busy, children: "重试" })
+              jsx(Button, { variant: "ghost", size: "sm", onClick: load, disabled: busy, children: "Retry" })
             ]
           }) : null,
           ...groups.map((group) => {
@@ -1711,7 +1717,7 @@ window.__ModuleLoader__.load({
               children: [
                 "curl -s -X POST " + (typeof location !== "undefined" ? location.origin : "http://127.0.0.1:54429") + "/api/dsh-prompt-custom/findings \\",
                 "  -H 'content-type: application/json' \\",
-                "  -d '{\"action\":\"upsert\",\"title\":\"SQL 注入\",\"severity\":\"high\",\"target\":\"api.example.com\",\"url\":\"/api/order?id=1\",\"evidence\":\"1' AND SLEEP(3)-- 延迟 3s\",\"remediation\":\"参数化查询\"}'"
+                "  -d '{\"action\":\"upsert\",\"title\":\"SQL injection\",\"severity\":\"high\",\"target\":\"api.example.com\",\"url\":\"/api/order?id=1\",\"evidence\":\"1' AND SLEEP(3)-- 3s delay\",\"remediation\":\"Parameterized queries\"}'"
               ].join("\n")
             }) : null
           })
@@ -1724,7 +1730,7 @@ window.__ModuleLoader__.load({
       const [error, setError] = react.useState("");
       const [open, setOpen] = react.useState("");
 
-      // 尽最大努力识别"当前对话"：扫 localStorage 里含 session 的键，取第一个 session-<uuid>。
+      // Best-effort current conversation detection: scan localStorage keys containing session for the first session-<uuid>.
       const guessSession = () => {
         if (sessionIdHint) return sessionIdHint;
         try {
@@ -1787,7 +1793,7 @@ window.__ModuleLoader__.load({
             className: "dsh-fuj-skills-heading",
             children: [
               jsx("h3", { children: L.knowledgeTitle }),
-              jsx("span", { className: "dsh-fuj-skills-count", children: enabled ? L.knowledgeTotal(total, categories.length) : "已关闭（" + (data && data.available ? data.available : 0) + " 条可用）" })
+              jsx("span", { className: "dsh-fuj-skills-count", children: enabled ? L.knowledgeTotal(total, categories.length) : "Disabled (" + (data && data.available ? data.available : 0) + " entries available)" })
             ]
           }),
           jsx("p", { className: "dsh-fuj-skills-caption", children: L.knowledgeHint }),
@@ -1796,7 +1802,7 @@ window.__ModuleLoader__.load({
             className: "dsh-fuj-skills-error",
             children: [
               jsx("span", { children: error }),
-              jsx(Button, { variant: "ghost", size: "sm", onClick: load, disabled: busy, children: "重试" })
+              jsx(Button, { variant: "ghost", size: "sm", onClick: load, disabled: busy, children: "Retry" })
             ]
           }) : null,
           jsx("article", {
@@ -1809,7 +1815,7 @@ window.__ModuleLoader__.load({
                 jsxs("div", {
                   className: "dsh-fuj-skill-enable",
                   children: [
-                    jsx("span", { children: enabled ? "已开启" : "已关闭" }),
+                    jsx("span", { children: enabled ? "Enabled" : "Disabled" }),
                     jsx(Switch, { label: L.knowledgeTitle, checked: enabled, disabled: busy || !data, onChange: toggle })
                   ]
                 })
@@ -1819,7 +1825,7 @@ window.__ModuleLoader__.load({
           ...categories.map((category) => jsx(DisclosureRow, {
             key: category.name,
             icon: jsx(IconChevronDownOutlineRegular, {}),
-            title: category.title + "（" + category.count + " 条）",
+            title: category.title + " (" + category.count + " entries)",
             open: open === category.name,
             expandable: true,
             expandOnRowClick: true,
@@ -1955,7 +1961,7 @@ window.__ModuleLoader__.load({
       });
     }
     function apply(ctx) {
-      // 启动免责声明：每次打开 Harness 弹一次；同意后本次运行不再出现，拒绝则关闭应用。
+      // Startup disclaimer: once per Harness launch; acceptance dismisses it for this run, refusal closes the app.
       function DisclaimerGate() {
         const KEY = "dsh-prompt-custom-disclaimer-v1";
         const [open, setOpen] = react.useState(() => {
@@ -2003,36 +2009,36 @@ window.__ModuleLoader__.load({
               padding: "20px 22px 16px"
             },
             children: [
-              jsx("div", { style: { fontSize: 17, fontWeight: 700, marginBottom: 2 }, children: "免责声明与使用须知" }),
-              jsx("div", { style: { fontSize: 12, color: "#6b7280", marginBottom: 14 }, children: "富江破甲插件 · dsh-prompt-custom · v1.1" }),
+              jsx("div", { style: { fontSize: 17, fontWeight: 700, marginBottom: 2 }, children: "Disclaimer and Terms of Use" }),
+              jsx("div", { style: { fontSize: 12, color: "#6b7280", marginBottom: 14 }, children: "Fujiang Armor Breaker Plugin · dsh-prompt-custom · v1.1" }),
               jsx("div", { style: { fontSize: 13, lineHeight: "21px" }, children: [
 
-                jsx("div", { style: { fontWeight: 600, margin: "0 0 4px" }, children: "一、授权前提" }),
-                jsx("div", { style: { margin: "0 0 12px" }, children: "使用本插件前，请确认满足下列任一条件：" }),
-                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "1）目标为你本人所有的资产；" }),
-                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "2）已取得目标方书面授权，并明确测试范围与时间窗口；" }),
-                jsx("div", { style: { margin: "0 0 12px", paddingLeft: 14 }, children: "3）目标为公开靶场、CTF 赛事或你自建的隔离实验环境。" }),
+                jsx("div", { style: { fontWeight: 600, margin: "0 0 4px" }, children: "1. Authorization Prerequisites" }),
+                jsx("div", { style: { margin: "0 0 12px" }, children: "Before using this plugin, confirm that at least one of the following applies:" }),
+                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "1) You personally own the target asset;" }),
+                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "2) You have written authorization from the target owner, with a defined testing scope and time window;" }),
+                jsx("div", { style: { margin: "0 0 12px", paddingLeft: 14 }, children: "3) The target is a public practice range, a CTF competition, or an isolated lab environment you created." }),
 
-                jsx("div", { style: { fontWeight: 600, margin: "0 0 4px" }, children: "二、使用者责任" }),
-                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "1）每次测试的目标、范围、频率与影响，由你自行确认并承担相应责任。" }),
-                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "2）知识库条目与 PoC 供学习、复现与授权评估使用；将其用于未授权系统属于使用者个人行为。" }),
-                jsx("div", { style: { margin: "0 0 12px", paddingLeft: 14 }, children: "3）你应当遵守所在地法律法规及与目标方的约定；由此产生的一切后果由使用者本人承担。" }),
+                jsx("div", { style: { fontWeight: 600, margin: "0 0 4px" }, children: "2. User Responsibilities" }),
+                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "1) You must independently confirm each test's target, scope, frequency, and impact, and accept responsibility for them." }),
+                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "2) Knowledge base entries and PoCs are for learning, reproduction, and authorized assessments. Their use against unauthorized systems is the user's individual action." }),
+                jsx("div", { style: { margin: "0 0 12px", paddingLeft: 14 }, children: "3) You must comply with local laws and regulations and your agreements with the target owner. You personally bear all resulting consequences." }),
 
-                jsx("div", { style: { fontWeight: 600, margin: "0 0 4px" }, children: "三、能力与风险提示" }),
-                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "1）插件提供指纹匹配、PoC 参考、任务台账与自动续跑；实际发包动作由模型在你的环境中执行。" }),
-                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "2）部分 PoC 具备破坏性（写入文件、重启服务、修改配置），建议先在实验环境验证效果。" }),
-                jsx("div", { style: { margin: "0 0 12px", paddingLeft: 14 }, children: "3）自动续跑会在目标未达成时继续推进（默认上限 8 轮），可能产生额外请求与访问日志。" }),
+                jsx("div", { style: { fontWeight: 600, margin: "0 0 4px" }, children: "3. Capabilities and Risks" }),
+                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "1) The plugin provides fingerprint matching, PoC references, campaign ledgers, and automatic continuation. The model sends actual packets within your environment." }),
+                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "2) Some PoCs are destructive (writing files, restarting services, changing configuration). Validate their effects in a lab first." }),
+                jsx("div", { style: { margin: "0 0 12px", paddingLeft: 14 }, children: "3) Automatic continuation advances while the objective remains unmet (default limit: 8 rounds), which may generate additional requests and access logs." }),
 
-                jsx("div", { style: { fontWeight: 600, margin: "0 0 4px" }, children: "四、数据与隐私" }),
-                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "1）任务台账、漏洞报告与安装日志保存在本地 DSH_HOME 目录，插件运行全程离线。" }),
-                jsx("div", { style: { margin: "0 0 12px", paddingLeft: 14 }, children: "2）测试中获取的凭据、个人信息与业务数据，请按授权约定保存、使用并及时销毁。" }),
+                jsx("div", { style: { fontWeight: 600, margin: "0 0 4px" }, children: "4. Data and Privacy" }),
+                jsx("div", { style: { margin: "0 0 4px", paddingLeft: 14 }, children: "1) Campaign ledgers, vulnerability reports, and installation logs are stored in the local DSH_HOME directory. The plugin operates entirely offline." }),
+                jsx("div", { style: { margin: "0 0 12px", paddingLeft: 14 }, children: "2) Store, use, and promptly destroy credentials, personal information, and business data obtained during testing in accordance with your authorization agreement." }),
 
-                jsx("div", { style: { fontWeight: 600, margin: "0 0 4px" }, children: "五、责任限制" }),
-                jsx("div", { style: { margin: "0 0 12px" }, children: "在适用法律允许的最大范围内，插件作者与分发者对使用本插件引发的损失（含数据损坏、业务中断、合规责任）免除赔偿责任。" }),
+                jsx("div", { style: { fontWeight: 600, margin: "0 0 4px" }, children: "5. Limitation of Liability" }),
+                jsx("div", { style: { margin: "0 0 12px" }, children: "To the fullest extent permitted by applicable law, the plugin's authors and distributors disclaim liability for losses arising from its use, including data corruption, business interruption, and compliance liabilities." }),
 
-                jsx("div", { style: { fontWeight: 600, margin: "0 0 4px" }, children: "六、确认" }),
-                jsx("div", { style: { margin: "0 0 4px" }, children: "点击「同意并遵守」表示你已阅读、理解并接受上述全部条款，本次运行内有效。" }),
-                jsx("div", { style: { margin: "0 0 0" }, children: "点击「拒绝」将立即关闭 DeepSeek Harness；也可直接按 Enter 或 Esc 视为同意。" })
+                jsx("div", { style: { fontWeight: 600, margin: "0 0 4px" }, children: "6. Acknowledgment" }),
+                jsx("div", { style: { margin: "0 0 4px" }, children: "Clicking Agree and Comply confirms that you have read, understood, and accepted all terms above for this run." }),
+                jsx("div", { style: { margin: "0 0 0" }, children: "Clicking Decline immediately closes DeepSeek Harness. Pressing Enter or Esc also counts as acceptance." })
               ] }),
               jsx("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end" }, children: [
                 jsx("button", {
@@ -2047,7 +2053,7 @@ window.__ModuleLoader__.load({
                     color: "#b42318",
                     cursor: "pointer"
                   },
-                  children: "拒绝"
+                  children: "Decline"
                 }),
                 jsx("button", {
                   type: "button",
@@ -2062,13 +2068,13 @@ window.__ModuleLoader__.load({
                     color: "#fff",
                     cursor: "pointer"
                   },
-                  children: "同意并遵守"
+                  children: "Agree and Comply"
                 })
               ] })
             ]
           })
         });
-        // 键盘兜底：Enter / Esc 等同于「同意并遵守」，避免浮层点不到时卡死。
+        // Keyboard fallback: Enter / Esc equal Agree and Comply, avoiding a dead end if the overlay cannot be clicked.
         react.useEffect(() => {
           if (!open) return;
           const onKey = (event) => {
@@ -2084,7 +2090,7 @@ window.__ModuleLoader__.load({
           return () => { try { window.removeEventListener("keydown", onKey, true); } catch (error) {} };
         }, [open]);
         if (!open) return null;
-        // 挂到 body 上，避免被 slot 容器的 pointer-events / transform 限制。
+        // Mount on body to avoid pointer-events / transform restrictions imposed by the slot container.
         try {
           const reactDom = require("react-dom");
           if (reactDom && typeof reactDom.createPortal === "function" && typeof document !== "undefined" && document.body) {
@@ -2095,7 +2101,7 @@ window.__ModuleLoader__.load({
       }
 
       function PromptToggle(props) {
-        // slot 会通过 inject 注入当前会话 id；拿不到就空串（面板会退回列表选择）。
+        // The slot injects the current session ID; use an empty string if unavailable (the panel falls back to a list).
         const sessionId = props && props.sessionId ? String(props.sessionId) : "";
         const [enabled, setEnabled] = react.useState(false);
         const [phase, setPhase] = react.useState("loading");
@@ -2196,7 +2202,7 @@ window.__ModuleLoader__.load({
             "aria-checked": enabled,
             "aria-busy": busy || phase === "loading",
             disabled: busy || phase === "loading",
-            title: error ? error + "，点击重试" : (enabled ? "点击关闭" : "点击开启") + L.toggleLabel,
+            title: error ? error + ", click to retry" : (enabled ? "Click to disable " : "Click to enable ") + L.toggleLabel,
             onClick: (event) => {
               event.stopPropagation();
               return error || phase === "error" ? refresh() : change(!enabled);
@@ -2245,7 +2251,7 @@ window.__ModuleLoader__.load({
               }),
               jsx("span", {
                 style: { display: "block", lineHeight: "18px" },
-                children: L.toggleLabel + (error ? "待重试" : phase !== "ready" ? L.toggleLoading : enabled ? L.toggleOn : L.toggleOff)
+                children: L.toggleLabel + " · " + (error ? "Retry pending" : phase !== "ready" ? L.toggleLoading : enabled ? L.toggleOn : L.toggleOff)
               })
             ]
                 })
@@ -2269,7 +2275,7 @@ window.__ModuleLoader__.load({
         inject: (sessionId) => ({ sessionId: sessionId === undefined ? "" : String(sessionId) })
       }, PromptToggle));
 
-      // 设置面板是全局的：inject 只是尽力拿到当前会话；拿不到就退回列表选择。
+      // Settings are global: inject only makes a best-effort attempt to get the current session; otherwise use list selection.
       const registerSettings = (withInject) => () => ctx.slots.register({
         name: "settings.section",
         id: "dsh-prompt-custom",

