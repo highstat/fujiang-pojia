@@ -1,8 +1,3 @@
-**[Join the channel: https://t.me/DeepSeek22](https://t.me/DeepSeek22)**
-
-Welcome to the channel. Follow Fujiang Pojia.
-
-<a href="https://t.me/DeepSeek22"><img src="./telegram-channel.png" alt="Fujiang Pojia channel QR code, click to join" width="320"></a>
 
 # Fujiang Pojia (Armor Break)
 
