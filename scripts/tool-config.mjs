@@ -33,6 +33,10 @@ export function openCodeToolEntry(root, environment = process.env) {
       environment: { REA_MCP_OUTPUT_SCHEMA_PROFILE: 'off' },
       timeout: { startup: 120000, execution: 60000 },
     },
+    fujiang_assessment: {
+      type: 'local', command: [process.execPath, path.resolve(root, 'fujiang-runtime/scripts/assessment.mjs'), 'mcp'],
+      timeout: { startup: 30000, execution: 120000 },
+    },
   };
   for (const [name, configuration] of Object.entries(requested)) {
     if (Object.hasOwn(mcp, name) || Object.hasOwn(servers, name) && !isDeepStrictEqual(servers[name], configuration)) {

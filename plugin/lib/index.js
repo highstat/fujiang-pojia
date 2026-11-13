@@ -52,6 +52,8 @@ import { createContext7Bridge, TOOL_USE_POLICY } from './tool-integrations.js';
 import { createFindingsStore } from './findings.js';
 import { createKbIndex, createCampaignStore, createSkillIndex, registerAutomationTools } from './automation.js';
 import { fileURLToPath } from 'node:url';
+import { createAssessmentService } from './assessment.js';
+import { assessmentHarnessTools, invokeAssessmentTool } from './assessment-tools.js';
 
 export const name = 'dsh-prompt-custom';
 export const inject = ['systemPrompt', 'webServer'];
@@ -294,6 +296,8 @@ export function apply(ctx, config) {
   const corpusDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'knowledge');
   const kbIndex = createKbIndex(corpusDir);
   const knowledgeEnabled = () => knowledgeLibrary.snapshot().skills[0]?.enabled === true;
+  const assessment = createAssessmentService({ corpusDir, knowledgeEnabled });
+  ctx.effect(() => () => assessment.dispose(), 'dsh-prompt-custom: assessment cleanup');
   const availableKbIndex = {
     size: () => knowledgeEnabled() ? kbIndex.size() : 0,
     match: (...args) => knowledgeEnabled() ? kbIndex.match(...args) : [],
@@ -868,6 +872,21 @@ export function apply(ctx, config) {
       setTimeout(() => { try { process.exit(0); } catch { } }, 500);
     });
     // Fingerprint → knowledge-base candidates (local index, no network)
+    route('/api/dsh-prompt-custom/assessment', async (req, res) => {
+      if (!isLoopback(req)) { res.writeHead(403); res.end('forbidden'); return; }
+      if (req.method !== 'POST') { res.writeHead(405, { allow: 'POST' }); res.end(); return; }
+      try {
+        const host = new URL('http://' + req.headers?.host);
+        if (!['127.0.0.1', '[::1]', 'localhost'].includes(host.hostname)) throw new Error('Assessment API requires a loopback Host.');
+        if (req.headers?.['sec-fetch-site'] === 'cross-site') throw new Error('Cross-site requests are forbidden.');
+        if (req.headers?.origin && new URL(req.headers.origin).origin !== host.origin) throw new Error('Assessment API requires same-origin requests.');
+      } catch (error) { sendJson(res, 403, { ok: false, message: error.message }); return; }
+      try {
+        const body = await readBody(req, 128 * 1024);
+        const result = await invokeAssessmentTool(assessment, body?.tool, body?.arguments ?? {});
+        sendJson(res, 200, { ok: true, proto: API_PROTO, result });
+      } catch (error) { sendJson(res, 400, { ok: false, message: String(error.message || error) }); }
+    });
     route(MATCH_ROUTE, async (req, res) => {
       if (!isLoopback(req)) { res.writeHead(403); res.end('forbidden'); return; }
       if (req.method !== 'POST') { res.writeHead(405, { allow: 'POST' }); res.end(); return; }
@@ -1147,7 +1166,7 @@ export function apply(ctx, config) {
     });
   });
   // Native tools are an optional enhancement: silently fall back to HTTP if dsh-tools is unavailable.
-  registerAutomationTools(ctx, { kbIndex: availableKbIndex, campaigns, findings, skillIndex }).then((result) => {
+  registerAutomationTools(ctx, { kbIndex: availableKbIndex, campaigns, findings, skillIndex, advancedTools: assessmentHarnessTools(assessment) }).then((result) => {
     automationTools = result;
     if (result.ok) log('[dsh-prompt-custom] Registered native tools: ' + result.registered.join(', '));
     else warn('[dsh-prompt-custom] Native tools disabled (HTTP remains available): ' + result.reason);

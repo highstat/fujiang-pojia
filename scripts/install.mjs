@@ -223,10 +223,14 @@ export function installOpenCode(options, log = console.log) {
   if (options.withTools) {
     guardDestination(root, path.join(root, 'opencode.json'));
     entries.push(openCodeToolEntry(root));
+    const runtimePlugin = path.join(bundleRoot, 'plugin');
+    validateSource(runtimePlugin);
+    entries.push({ source: runtimePlugin, destination: path.join(root, 'fujiang-runtime/plugin') });
+    entries.push({ source: path.join(bundleRoot, 'scripts/assessment.mjs'), destination: path.join(root, 'fujiang-runtime/scripts/assessment.mjs') });
   }
   for (const entry of entries) { guardDestination(root, entry.destination); log('Install: ' + entry.destination); }
   log('Source prompt is preserved and an additive Context7/REA tool-use section is appended; cards and Harness injection modes are not imported.');
-  if (options.withTools) log('Register Context7 remote MCP and REA 6.9.0 local MCP. Starting OpenCode may download REA via npx; Node.js must satisfy REA runtime requirements.');
+  if (options.withTools) log('Register Context7, REA 6.9.0, and the bundled assessment MCP runtime. Starting OpenCode may download REA via npx; scanners and embedding models are never installed automatically.');
   if (options.dryRun) { log('Dry run; no files changed.'); return; }
   applyPlan(root, entries, undefined, log);
   log('OpenCode adapter installed: agent fujiang and ' + skillNames.size + ' knowledge skills.');

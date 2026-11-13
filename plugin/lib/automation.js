@@ -634,7 +634,7 @@ export function createCampaignStore(ctx, options = {}) {
  * Optionally register capabilities as native tools. If @deepseek-ai/dsh-tools is unavailable,
  * return { ok:false, reason } so the caller stays HTTP-only without throwing or affecting plugin startup.
  */
-export async function registerAutomationTools(ctx, { kbIndex, campaigns, findings, skillIndex }) {
+export async function registerAutomationTools(ctx, { kbIndex, campaigns, findings, skillIndex, advancedTools = [] }) {
   let toolsModule = null;
   try {
     const loader = typeof ctx.get === 'function' ? ctx.get('loader') : undefined;
@@ -711,7 +711,7 @@ export async function registerAutomationTools(ctx, { kbIndex, campaigns, finding
           execute: async (args) => ({ next: campaigns.nextStep(args.campaignId, kbIndex) }),
         },
       ];
-      for (const def of defs) {
+      for (const def of [...defs, ...advancedTools]) {
         try { scope.tools.register(defineTool(def)); registered.push(def.name); }
         catch (error) { ctx.logger?.warn?.('[dsh-prompt-custom] Tool registration failed ' + def.name + ': ' + messageOf(error)); }
       }
