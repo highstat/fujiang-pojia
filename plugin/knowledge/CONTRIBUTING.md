@@ -52,4 +52,4 @@ The [knowledge index](README.md) lists all categories. The [expansion guide](../
 
 The release version is `plugin/package.json`. The workspace `package.json` only defines development commands. Record schema revision, content changes, verification scope and metadata snapshot dates separately in this directory's changelog.
 
-Our `0.20.14` is a locally modified English fork based on upstream `0.20.13`, not a newer author release. The Telegram ZIP published on November 12, 2026 was compared to upstream commit `338b598386aed60d4e7bdbf60ebb526af0b47697`: all 202 files were byte-identical. Do not infer freshness from an archive's upload date or replace translated/custom files with an older upstream snapshot.
+Our `0.21.0` is a locally modified English fork based on upstream `0.20.13`, not a newer author release. The Telegram ZIP published on November 12, 2026 was compared to upstream commit `338b598386aed60d4e7bdbf60ebb526af0b47697`: all 202 files were byte-identical. Do not infer freshness from an archive's upload date or replace translated/custom files with an older upstream snapshot.

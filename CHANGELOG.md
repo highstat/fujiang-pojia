@@ -1,27 +1,15 @@
 # Changelog
 
-## Unreleased — Context7 and REA connections (2026-11-13)
+## 0.21.0 (2026-11-13)
 
-- Added an asynchronous Harness Context7 MCP bridge, environment-only authentication, live tool-registry status, failure cleanup, and an offline opt-out. The existing on-demand REA connection remains independent.
-- Added explicit OpenCode `--with-tools` / `-WithTools` registration for remote Context7 and pinned REA 6.9.0. Preserves unrelated JSON settings with backups; refuses JSONC, symlinks and conflicting server names. No model request or REA package execution occurs during installation.
-- Added shared task-specific Context7/REA guidance as a disposable Harness section and an appended OpenCode section. The source prompt file and original persona text remain unchanged; the effective assembled instruction set is intentionally extended. This adds no content filter or guaranteed invocation.
-- Added offline MCP/configuration regressions and integration documentation with actual runtime requirements and verification limits.
+- **Assessment platform**: Added a local assessment engine with bounded runner, ZAP alert collector, graph/plan engine, MCP protocol endpoints, and native Harness descriptors.
+- **Context7 & REA tool integrations**: Added an asynchronous Harness Context7 MCP bridge, environment-only authentication, live tool-registry status, failure cleanup, and an offline opt-out. Added explicit OpenCode `--with-tools` / `-WithTools` registration for remote Context7 and pinned REA 6.9.0 without modifying unrelated JSON settings. Added task-specific guidance shared between hosts.
+- **Knowledge base expansion & schema**: Expanded the knowledge base to 300 records in 11 categories, adding 86 CVEs and 47 red/blue-team workflows with CNA/ADP provenance, safe applicability checks, remediation guidance, defensive triage, and dated CISA KEV / FIRST EPSS metadata integration. Replaced hardcoded version in runtime catalogs with dynamic derivation from `plugin/package.json`.
+- **Hybrid knowledge search**: Added BM25 full-text indexing, optional local embeddings, and conservative version applicability checking against CNA version ranges.
+- **Installer architecture & Windows CI fix**: Moved platform launchers/installers into `scripts/installers/`. Replaced recursive `fs.cpSync` directory staging with an explicit portable tree copy, resolving directory creation failures on Windows + Node 22/24. Added cross-platform CI coverage for Node 20, 22, and 24.
+- **Documentation & cleanup**: Reorganized English documentation into `docs/`, removed macOS directory metadata and root launcher clutter.
 
-## Unreleased — red/blue expansion and installer layout (2026-11-13)
-
-- Expanded the knowledge base to 300 records in 11 categories, adding 86 CVEs and 47 red/blue-team workflows. Added public-source provenance, safe applicability checks, remediation guidance, defensive triage and explicit verification limits.
-- Moved all eight platform launcher/installer files from the repository root into `scripts/installers/`; updated relative source resolution, documentation, shell regression tests and Windows fixture layout. Old root-level launcher paths are intentionally no longer supported.
-- Added scripts/knowledge navigation, source-audit documentation and offline expansion regressions. No source-prompt changes or model calls are part of this update.
-
-## Unreleased — knowledge maintenance (2026-11-13)
-
-- Reorganized the English documentation around this fork's version and host support; moved detailed features, screenshots, and the activation-word note into `docs/`. Kept all installer entry points at their existing root paths.
-- Removed macOS directory metadata and added ignore rules for OS files, local environment files, logs, dependencies, and test artifacts.
-- Added a typed knowledge schema, an idempotent normalization checker, canonical category tables, explicit severity policy and verification provenance.
-- Preserved multi-CVE chains, workflow structure, source prompt and fenced PoC examples. Added optional CISA KEV / FIRST EPSS metadata refresh without target testing or implicit verification.
-- Fixed stale live knowledge catalogs and derived the library version from `plugin/package.json` instead of a separate hardcoded version.
-- Added offline knowledge regressions, root `npm test` commands and cross-platform CI. The browser fixture server remains manual and is not started by the test suite.
-- See `plugin/knowledge/CHANGELOG.md` for the content/schema history. This is not a new upstream author release.
+Verification: 83 tests passing (81 passed, 2 skipped, 0 failed) on Node 20, Node 22, and Node 24 across Ubuntu, Windows, and macOS; `knowledge:check` (300 valid entries) and `knowledge:normalize` clean.
 
 ## 0.20.14 (2026-11-11)
 

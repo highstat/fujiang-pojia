@@ -6,7 +6,7 @@
 
 Custom prompt controls, an offline security knowledge base, and assessment-workflow tools for DeepSeek Harness. The OpenCode adapter installs the preserved source prompt plus additive tool-use guidance and knowledge as a selectable agent and skills.
 
-> **Fork version: 0.20.14**, based on upstream **0.20.13**. Knowledge maintenance and repository cleanup are currently **Unreleased**. This version belongs to this fork; it is not a new release from the original author.
+> **Fork version: 0.21.0**, based on upstream **0.20.13**. This version belongs to this fork; it is not a new release from the original author.
 
 [Installation](docs/installation.md) · [Harness features](docs/features.md) · [Context7 / REA](docs/tool-integrations.md) · [Screenshots](docs/screenshots/README.md) · [Changelog](CHANGELOG.md) · [Disclaimer](DISCLAIMER.md)
 

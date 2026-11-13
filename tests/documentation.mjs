@@ -40,7 +40,6 @@ test('README describes the fork version and links to the organized documentation
   const plugin = JSON.parse(fs.readFileSync(path.join(root, 'plugin/package.json'), 'utf8'));
   assert.ok(readme.includes('**Fork version: ' + plugin.version + '**'));
   assert.match(readme, /based on upstream \*\*0\.20\.13\*\*/);
-  assert.match(readme, /\*\*Unreleased\*\*/);
   assert.doesNotMatch(readme, /DeepSeek22|telegram-channel\.png|Join the channel/);
   for (const document of ['docs/installation.md', 'docs/features.md', 'docs/screenshots/README.md']) {
     assert.ok(readme.includes('](' + document), document);
