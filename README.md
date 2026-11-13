@@ -1,3 +1,5 @@
+<img width="1736" height="346" alt="CleanShot 2026-11-11 at 19 17 48@2x" src="https://github.com/user-attachments/assets/e9d9d347-f519-4b24-9168-86d097a9b193" />
+
 # Fujiang Pojia
 
 ### English fork · Harness plugin · OpenCode adapter
@@ -32,7 +34,7 @@ The activation word in the bundled prompt is `fujiang` (case-insensitive). Revie
 | REA / AboutSecurity download controls | On-demand skill-library integration | Not included |
 | Updates | Re-run the Harness installer and restart Harness | Re-run the adapter to refresh its snapshot |
 
-The adapter leaves API keys, permission rules, provider settings, default agents/models, and existing `opencode.json` / `opencode.jsonc` files unchanged. Selecting the agent does not guarantee a particular response or bypass provider restrictions. Model requests may incur provider charges.
+By default, the adapter leaves API keys, permission rules, provider settings, default agents/models, and existing `opencode.json` / `opencode.jsonc` files unchanged. Optional `--with-tools` registration updates only MCP configuration as described below. Selecting the agent does not guarantee a particular response or bypass provider restrictions. Model requests may incur provider charges.
 
 ## Quick start
 
