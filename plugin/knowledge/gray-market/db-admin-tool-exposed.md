@@ -1,18 +1,38 @@
 ﻿---
-title: Exposed phpMyAdmin / Adminer (direct database access with weak passwords)
-cve: None (configuration flaw)
-severity: critical
-cvss: 9.0
-product: phpMyAdmin / Adminer / BT Panel pma
-versions: Any
-ports: 80, 443, 888, 8080
-keywords: phpmyadmin, adminer, pma, database, weak passwords, database dumping
-entry: /phpmyadmin/  /pma/  /adminer.php
+id: "db-admin-tool-exposed"
+title: "Exposed phpMyAdmin / Adminer (direct database access with weak passwords)"
+kind: "configuration"
+cve: null
+related-cves: null
+cve-note: "None (configuration flaw)"
+severity: "critical"
+cvss: 9
+severity-basis: "cvss"
+severity-note: null
+product: "phpMyAdmin / Adminer / BT Panel pma"
+versions: "Any"
+ports: "80, 443, 888, 8080"
+keywords: "phpmyadmin, adminer, pma, database, weak passwords, database dumping"
+entry: "/phpmyadmin/  /pma/  /adminer.php"
 verified: false
-sources: Compiled from public sources (configuration flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (configuration flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 GET /phpmyadmin/       → 200 login page

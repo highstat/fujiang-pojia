@@ -1,18 +1,38 @@
 ﻿---
-title: Origin IP disclosure → direct access bypassing the WAF (essential for gambling sites)
-cve: None (architectural flaw)
-severity: critical
-cvss: 9.0
-product: Any site behind a CDN/WAF
-versions: Any
-ports: 80, 443, 8080
-keywords: origin server, cdn, waf, bypass, real IP, origin access
-entry: Origin disclosed through subdomains/email headers/certificate history/SSRF
+id: "origin-ip-leak-waf-bypass"
+title: "Origin IP disclosure → direct access bypassing the WAF (essential for gambling sites)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (architectural flaw)"
+severity: "critical"
+cvss: 9
+severity-basis: "cvss"
+severity-note: null
+product: "Any site behind a CDN/WAF"
+versions: "Any"
+ports: "80, 443, 8080"
+keywords: "origin server, cdn, waf, bypass, real IP, origin access"
+entry: "Origin disclosed through subdomains/email headers/certificate history/SSRF"
 verified: false
-sources: Compiled from public sources (reconnaissance methods)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (reconnaissance methods)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - Main-site response headers contain `server: cloudflare` / `x-cache` / `cf-ray`;
 - Multiple application domains run on the same IP range.

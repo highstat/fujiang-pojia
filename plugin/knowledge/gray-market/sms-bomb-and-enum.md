@@ -1,17 +1,38 @@
 ---
-title: SMS bombing and account enumeration (verification-code attack surface)
-cve: None (business logic)
-severity: medium
+id: "sms-bomb-and-enum"
+title: "SMS bombing and account enumeration (verification-code attack surface)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "medium"
 cvss: 5.3
-product: Custom registration/login/recovery endpoints
-versions: Any
-ports: 80, 443
-keywords: sms, bombing, enumeration, verification-code brute force, rate limiting, user enumeration
+severity-basis: "cvss"
+severity-note: null
+product: "Custom registration/login/recovery endpoints"
+versions: "Any"
+ports: "80, 443"
+keywords: "sms, bombing, enumeration, verification-code brute force, rate limiting, user enumeration"
+entry: "SMS verification-code and account lookup endpoints"
 verified: false
-sources: Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - `/api/sms/send`, `/api/user/register`, `/api/user/findpwd`, `/api/login` (image CAPTCHA/SMS verification code);
 - Response-message differences: `This phone number is already registered` / `User does not exist` / `Verification code sent`.
@@ -50,7 +71,9 @@ POST /api/login {"phone":"...","code":"0000"}  → Iterate through 9999
 4. Chain: enumerate registered numbers → weak passwords/credential stuffing (six-digit numeric passwords are common on these sites) → verification-code brute force as a fallback.
 5. Retain only 2–3 requests as evidence; do not include a phone-number database in the report.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Require image/behavioral verification (slider) first; rate-limit across "phone number + IP + device + type" and silently discard over-limit requests.
 - Six-digit codes, 5-minute validity, 5-attempt limit, single use; bind to the phone number and session.

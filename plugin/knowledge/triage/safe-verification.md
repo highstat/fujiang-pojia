@@ -1,13 +1,35 @@
 ---
-title: Safe PoC verification and evidence-collection standards
-cve: None
-severity: info
+id: "safe-verification"
+title: "Safe PoC verification and evidence-collection standards"
+kind: "workflow"
+cve: null
+related-cves: null
+cve-note: "None"
+severity: "info"
 cvss: 0
-product: Methodology
-ports: Any
-keywords: verification, evidence, safety, cleanup
+severity-basis: "cvss"
+severity-note: null
+product: "Methodology"
+versions: "-"
+ports: "Any"
+keywords: "verification, evidence, safety, cleanup"
+entry: "Authorization, minimal verification, and evidence collection"
 verified: false
-sources: Compiled from public sources (business-logic / implementation / configuration flaws without CVEs; see references below)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business-logic / implementation / configuration flaws without CVEs; see references below)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
 ## Authorization prerequisites (state them explicitly in the report)

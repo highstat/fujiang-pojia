@@ -1,18 +1,38 @@
 ﻿---
-title: OAuth redirect_uri hijacking / missing state (account takeover)
-cve: None (implementation flaw)
-severity: high
+id: "oauth-redirect-uri"
+title: "OAuth redirect_uri hijacking / missing state (account takeover)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "high"
 cvss: 8.6
-product: Custom third-party login (Google/WeChat/Telegram)
-versions: Any
-ports: 80, 443
-keywords: oauth, redirect_uri, state, login, takeover, sso
-entry: Tamperable /oauth/authorize?redirect_uri=
+severity-basis: "cvss"
+severity-note: null
+product: "Custom third-party login (Google/WeChat/Telegram)"
+versions: "Any"
+ports: "80, 443"
+keywords: "oauth, redirect_uri, state, login, takeover, sso"
+entry: "Tamperable /oauth/authorize?redirect_uri="
 verified: false
-sources: Compiled from public sources (implementation flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (implementation flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 GET /oauth/authorize?client_id=..&redirect_uri=..&response_type=code

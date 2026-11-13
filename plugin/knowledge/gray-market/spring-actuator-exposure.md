@@ -1,17 +1,38 @@
 ---
-title: Unauthenticated Spring Boot Actuator (heapdump / Jolokia / Gateway)
-cve: None (configuration flaw; CVE-2022-22947 is a Gateway-specific case)
-severity: critical
-cvss: 9.0
-product: Spring Boot 2.x/3.x
-versions: Any (endpoints exposed without authentication)
-ports: 8080, 8443, 9090
-keywords: actuator, heapdump, jolokia, env, gateway, spring
+id: "spring-actuator-exposure"
+title: "Unauthenticated Spring Boot Actuator (heapdump / Jolokia / Gateway)"
+kind: "configuration"
+cve: null
+related-cves: null
+cve-note: "None (configuration flaw; CVE-2022-22947 is a Gateway-specific case)"
+severity: "critical"
+cvss: 9
+severity-basis: "cvss"
+severity-note: null
+product: "Spring Boot 2.x/3.x"
+versions: "Any (endpoints exposed without authentication)"
+ports: "8080, 8443, 9090"
+keywords: "actuator, heapdump, jolokia, env, gateway, spring"
+entry: "Spring Boot Actuator management endpoints"
 verified: false
-sources: Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 /actuator                → Lists available endpoints
@@ -50,7 +71,9 @@ curl -s -o heap.hprof http://target/actuator/heapdump
 4. After DB and Redis access, continue with `kb-cloud-container` and `kb-triage`; these sites often run "frontend+admin+agent" applications on one machine.
 5. Cleanup: restore keys changed through `/actuator/env`; retain only the hash and timestamp of uploaded heapdumps.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Set `management.endpoints.web.exposure.include=health,info`; place management endpoints on a separate, internal-only port.
 - Protect `/actuator/**` with Spring Security; disable `heapdump`/`jolokia`/`gateway`.

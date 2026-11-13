@@ -1,15 +1,35 @@
 ﻿---
-title: Nginx alias path traversal (arbitrary file read/source code disclosure)
-cve: None (configuration flaw)
-severity: high
+id: "nginx-alias-traversal"
+title: "Nginx alias path traversal (arbitrary file read/source code disclosure)"
+kind: "configuration"
+cve: null
+related-cves: null
+cve-note: "None (configuration flaw)"
+severity: "high"
 cvss: 7.8
-product: Nginx (missing trailing slash in location alias configuration)
-versions: Any
-ports: 80, 443
-keywords: nginx, alias, traversal, directory, source code, configuration
-entry: /static../  /files..;/  alias without a trailing /
+severity-basis: "cvss"
+severity-note: null
+product: "Nginx (missing trailing slash in location alias configuration)"
+versions: "Any"
+ports: "80, 443"
+keywords: "nginx, alias, traversal, directory, source code, configuration"
+entry: "/static../  /files..;/  alias without a trailing /"
 verified: false
-sources: Compiled from public sources (configuration flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (configuration flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
 ## Fingerprinting

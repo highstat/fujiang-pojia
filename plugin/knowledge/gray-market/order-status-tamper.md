@@ -1,18 +1,38 @@
 ﻿---
-title: Order state-machine tampering (unpaid changed to paid / canceled orders credited again)
-cve: None (business logic)
-severity: critical
+id: "order-status-tamper"
+title: "Order state-machine tampering (unpaid changed to paid / canceled orders credited again)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
 cvss: 9.3
-product: Custom deposit/order systems (financial impact)
-versions: Any
-ports: 80, 443
-keywords: order, state machine, tampering, unpaid, deposit, funds
-entry: /api/order/status  /api/recharge/confirm
+severity-basis: "cvss"
+severity-note: null
+product: "Custom deposit/order systems (financial impact)"
+versions: "Any"
+ports: "80, 443"
+keywords: "order, state machine, tampering, unpaid, deposit, funds"
+entry: "/api/order/status  /api/recharge/confirm"
 verified: false
-sources: Compiled from public sources (business logic flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 POST /api/order/create {"amount":100,"channel":"alipay"}

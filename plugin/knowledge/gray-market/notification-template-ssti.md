@@ -1,18 +1,38 @@
 ﻿---
-title: Notification template injection (unescaped title/body templates → SSTI / stored XSS)
-cve: None (implementation flaw)
-severity: critical
-cvss: 9.0
-product: Custom messaging center (in-app message/email/SMS templates)
-versions: Any
-ports: 80, 443
-keywords: template, ssti, notification, in-app message, SMS, injection
-entry: Admin template editor / member-defined notification titles
+id: "notification-template-ssti"
+title: "Notification template injection (unescaped title/body templates → SSTI / stored XSS)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "critical"
+cvss: 9
+severity-basis: "cvss"
+severity-note: null
+product: "Custom messaging center (in-app message/email/SMS templates)"
+versions: "Any"
+ports: "80, 443"
+keywords: "template, ssti, notification, in-app message, SMS, injection"
+entry: "Admin template editor / member-defined notification titles"
 verified: false
-sources: Compiled from public sources (implementation flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (implementation flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 POST /api/admin/message/template  {"title":"${...}","content":"..."}

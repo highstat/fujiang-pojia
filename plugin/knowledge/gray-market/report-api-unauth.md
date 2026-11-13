@@ -1,18 +1,38 @@
 ﻿---
-title: Unauthenticated report/finance endpoints (site-wide transactions and agent commissions)
-cve: None (business logic)
-severity: high
+id: "report-api-unauth"
+title: "Unauthenticated report/finance endpoints (site-wide transactions and agent commissions)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "high"
 cvss: 8.6
-product: Reporting modules in turnkey gambling/agent admin panels
-versions: Any
-ports: 80, 443
-keywords: report, finance, reports, transactions, commissions, unauthenticated access
-entry: /api/report/* without authentication or with an ordinary token
+severity-basis: "cvss"
+severity-note: null
+product: "Reporting modules in turnkey gambling/agent admin panels"
+versions: "Any"
+ports: "80, 443"
+keywords: "report, finance, reports, transactions, commissions, unauthenticated access"
+entry: "/api/report/* without authentication or with an ordinary token"
 verified: false
-sources: Compiled from public sources (business logic flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 /api/report/bet        /api/report/finance       /api/report/agent

@@ -1,18 +1,38 @@
 ﻿---
-title: VIP/level endpoint parameter tampering (higher-tier benefits for free)
-cve: None (business logic)
-severity: high
+id: "vip-level-escalation"
+title: "VIP/level endpoint parameter tampering (higher-tier benefits for free)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "high"
 cvss: 8.1
-product: Custom membership systems (gambling/turnkey platforms)
-versions: Any
-ports: 80, 443
-keywords: vip, level, tier, benefits, parameter tampering, membership
-entry: /api/user/level or vipLevel/levelId in profile updates
+severity-basis: "cvss"
+severity-note: null
+product: "Custom membership systems (gambling/turnkey platforms)"
+versions: "Any"
+ports: "80, 443"
+keywords: "vip, level, tier, benefits, parameter tampering, membership"
+entry: "/api/user/level or vipLevel/levelId in profile updates"
 verified: false
-sources: Compiled from public sources (business logic flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 /api/user/info        → Returns vipLevel / levelId / exp / growth

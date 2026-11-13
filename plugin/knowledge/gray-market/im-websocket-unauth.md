@@ -1,22 +1,42 @@
 ﻿---
-title: Unauthenticated support IM / WebSocket (subscribe to others' conversations)
-cve: None (implementation flaw)
-severity: high
+id: "im-websocket-unauth"
+title: "Unauthenticated support IM / WebSocket (subscribe to others' conversations)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "high"
 cvss: 8.2
-product: Custom support system / socket.io / native WS
-versions: Any
-ports: 80, 443
-keywords: websocket, socket.io, im, support, unauthenticated, room, subscription
-entry: Subscribe to room directly via ws://host/ws without a token
+severity-basis: "cvss"
+severity-note: null
+product: "Custom support system / socket.io / native WS"
+versions: "Any"
+ports: "80, 443"
+keywords: "websocket, socket.io, im, support, unauthenticated, room, subscription"
+entry: "Subscribe to room directly via ws://host/ws without a token"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
-ws://target/ws?token=xxx        ws://target/socket.io/?EIO=4&transport=websocket
-/socket.io/socket.io.js         support domains (kf./service./chat.)
+ws://target/ws?token=xxx ws://target/socket.io/?EIO=4&transport=websocket
+/socket.io/socket.io.js support domains (kf./service./chat.)
 Handshake messages contain {"room":"user_10086"} / {"type":"join"}
 ```
 
@@ -48,7 +68,9 @@ websocat 'wss://target/socket.io/?EIO=4&transport=websocket'
 4. Combine with `member-data-enumeration.md`: enumerate rooms to obtain site-wide conversations.
 5. Evidence: one subscription frame + one returned frame (redacted).
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Authenticate during the handshake (validate the token before upgrading); reject anonymous connections;
 - Validate room ownership (users may subscribe only to their own room; support subscriptions require a role);
@@ -56,4 +78,4 @@ websocat 'wss://target/socket.io/?EIO=4&transport=websocket'
 
 ## References
 
-- OWASP WebSocket Security Cheat Sheet。
+- OWASP WebSocket Security Cheat Sheet.

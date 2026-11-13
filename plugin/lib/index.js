@@ -48,6 +48,7 @@ import os from 'node:os';
 import { createSkillLibrary } from './skills.js';
 import { createAboutSecuritySkillLibrary } from './aboutsecurity.js';
 import { createKnowledgeLibrary } from './knowledge.js';
+import { createContext7Bridge, TOOL_USE_POLICY } from './tool-integrations.js';
 import { createFindingsStore } from './findings.js';
 import { createKbIndex, createCampaignStore, createSkillIndex, registerAutomationTools } from './automation.js';
 import { fileURLToPath } from 'node:url';
@@ -282,6 +283,7 @@ function sectionNames(assembly) {
 const KNOWN_CONFIG_KEYS = new Set(['enabled', 'mode', 'text', 'cards']);
 
 export function apply(ctx, config) {
+  const context7 = createContext7Bridge(ctx);
   const reaSkillLibrary = createSkillLibrary(ctx);
   const aboutSecurityLibrary = createAboutSecuritySkillLibrary(ctx);
   // Knowledge base: bundled corpus (plugin/knowledge/), no download or network access; enabled by default.
@@ -424,6 +426,11 @@ export function apply(ctx, config) {
               text: currentText
             });
           }
+          sp.section({
+            name: 'fujiang:tool-use',
+            order: orderOf(sp, 'DEPLOYMENT_PERSONA_SUFFIX', ORDER_PERSONA_SUFFIX) + 2,
+            text: TOOL_USE_POLICY
+          });
           lastError = null;
         } catch (error) {
           lastError = String((error && error.message) || error);
@@ -672,6 +679,7 @@ export function apply(ctx, config) {
       agents: entries.size,
       injected,
       lastError,
+      toolIntegrations: { context7: context7.snapshot(), rea: reaSkillLibrary.snapshot().skills[0] },
       // Keys not recognized by this version (schema-evolution protection; see opening comments)
       unknownConfigKeys: detectUnknownConfigKeys(),
       path: configPath()

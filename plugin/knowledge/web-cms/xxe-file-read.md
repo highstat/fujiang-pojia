@@ -1,15 +1,35 @@
 ﻿---
-title: XXE external entity injection (file read / SSRF / OOB exfiltration)
-cve: None (implementation flaw)
-severity: high
+id: "xxe-file-read"
+title: "XXE external entity injection (file read / SSRF / OOB exfiltration)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "high"
 cvss: 8.2
-product: Any endpoint that parses XML (SOAP, DOCX/SVG uploads, SAML)
-versions: Any
-ports: 80, 443
-keywords: xxe, xml, external entities, file read, oob, saml
-entry: Endpoints using Content-Type: application/xml
+severity-basis: "cvss"
+severity-note: null
+product: "Any endpoint that parses XML (SOAP, DOCX/SVG uploads, SAML)"
+versions: "Any"
+ports: "80, 443"
+keywords: "xxe, xml, external entities, file read, oob, saml"
+entry: "Endpoints using Content-Type: application/xml"
 verified: false
-sources: Compiled from public sources (implementation flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (implementation flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
 ## Fingerprinting

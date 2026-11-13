@@ -1,18 +1,38 @@
 ﻿---
-title: Multi-tenant authorization bypass in turnkey platforms (enumerate tenantId/siteId across dozens of sites)
-cve: None (business logic)
-severity: critical
+id: "multi-tenant-cross-site"
+title: "Multi-tenant authorization bypass in turnkey platforms (enumerate tenantId/siteId across dozens of sites)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
 cvss: 9.2
-product: Turnkey/white-label system (one backend hosts multiple sites)
-versions: Any
-ports: 80, 443
-keywords: multi-tenant, tenant, siteId, turnkey platform, white label, broken access control
-entry: tenantId / siteId / merchantId in request bodies or Headers
+severity-basis: "cvss"
+severity-note: null
+product: "Turnkey/white-label system (one backend hosts multiple sites)"
+versions: "Any"
+ports: "80, 443"
+keywords: "multi-tenant, tenant, siteId, turnkey platform, white label, broken access control"
+entry: "tenantId / siteId / merchantId in request bodies or Headers"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - Login pages/API responses contain `siteId`, `tenantId`, `merchantId`, `brandId`;
 - One backend can switch among multiple domains (white label).

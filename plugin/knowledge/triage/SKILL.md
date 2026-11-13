@@ -1,8 +1,8 @@
 ---
-name: kb-triage
-description: CVE/PoC knowledge base · Methodology: fingerprint-to-vulnerability matching, safe PoC verification and evidence collection, report template, severity/CVSS classification, and recording findings in the vulnerability report. Read this before other categories to avoid unnecessary detours; no specific CVEs.
+name: "kb-triage"
+description: "CVE/PoC knowledge base · Methodology: fingerprint-to-vulnerability matching, safe PoC verification and evidence collection, report template, severity/CVSS classification, and recording findings in the vulnerability report. Read this before other categories to avoid unnecessary detours; no specific CVEs."
 verified: false
-sources: Compiled from public sources (CVE advisories / public analyses / business-logic issues; see each entry's references)
+sources: "Compiled from public sources (CVE advisories / public analyses / business-logic issues; see each entry's references)"
 ---
 
 # Methodology (3 entries)
@@ -12,11 +12,11 @@ Use this page to establish the workflow, then consult categories for the target 
 
 ## Entries
 
-| File | Vulnerability | Severity | Entry point |
+| File | Vulnerability | Severity | Entry Point |
 |---|---|---|---|
-| `fingerprint-workflow.md` | Fingerprint-to-vulnerability matching workflow | info | - |
-| `report-template.md` | Vulnerability report template | info | - |
-| `safe-verification.md` | Safe PoC verification and evidence-collection standards | info | - |
+| `fingerprint-workflow.md` | Fingerprint-to-vulnerability matching workflow | info | Asset fingerprinting and version-identification workflow |
+| `report-template.md` | Vulnerability report template | info | Vulnerability reporting and retesting workflow |
+| `safe-verification.md` | Safe PoC verification and evidence-collection standards | info | Authorization, minimal verification, and evidence collection |
 
 ## Three ground rules
 

@@ -1,18 +1,38 @@
 ﻿---
-title: Mass Assignment (inject role / vip / balance / agentId through registration/profile endpoints)
-cve: None (business logic)
-severity: high
+id: "mass-assignment-role"
+title: "Mass Assignment (inject role / vip / balance / agentId through registration/profile endpoints)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "high"
 cvss: 8.8
-product: Custom user/agent endpoints
-versions: Any
-ports: 80, 443
-keywords: mass assignment, mass assignment, role, vip, balance, agentId
-entry: Add role=admin to the registration body
+severity-basis: "cvss"
+severity-note: null
+product: "Custom user/agent endpoints"
+versions: "Any"
+ports: "80, 443"
+keywords: "mass assignment, mass assignment, role, vip, balance, agentId"
+entry: "Add role=admin to the registration body"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - Registration/profile-update responses closely overlap request fields: `role`, `vipLevel`, `balance`, `agentId`, `status`, `isAdmin`.
 - Frontend forms submit only some fields (suggesting the backend may bind the entire object).
@@ -58,4 +78,4 @@ POST /api/agent/apply HTTP/1.1
 
 ## References
 
-- OWASP Mass Assignment Cheat Sheet；CWE-915。
+- OWASP Mass Assignment Cheat Sheet; CWE-915.

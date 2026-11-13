@@ -1,18 +1,38 @@
 ---
-title: Predictable draw results (weak PRNG / client-side algorithm / fixed seed)
-cve: None (implementation flaw)
-severity: critical
+id: "lottery-prng-predictable"
+title: "Predictable draw results (weak PRNG / client-side algorithm / fixed seed)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "critical"
 cvss: 9.1
-product: In-house lottery / Kuai San / 28-style games
-versions: Any
-ports: 80, 443
-keywords: lottery, prng, draws, predictable, seeds, Kuai San, Shi Shi Cai
-entry: Historical draw statistics + reproduction of the frontend JS algorithm
+severity-basis: "cvss"
+severity-note: null
+product: "In-house lottery / Kuai San / 28-style games"
+versions: "Any"
+ports: "80, 443"
+keywords: "lottery, prng, draws, predictable, seeds, Kuai San, Shi Shi Cai"
+entry: "Historical draw statistics + reproduction of the frontend JS algorithm"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - Endpoints: `/api/lottery/history?issue=`, `/api/lottery/next`, `/api/bet/result`;
 - The frontend bundle contains draw calculations (`Math.random`, `Math.floor(...*10)`, custom shuffling);
@@ -55,7 +75,9 @@ grep -o 'Math\.random[^;]*' app.js | head
    - ② Pre-registered predictions achieve `M/N` significantly above `1/k` (`p<0.01`).
 6. Verify only with small amounts in an authorized environment; report "predictability ⇒ unbounded financial impact", without actual betting arbitrage.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Server-side CSPRNG (`crypto.randomInt`) + a trusted third-party draw source;
 - commit-reveal: publish `hash(seed)` before the draw and `seed` afterward, enabling verification without predictability;

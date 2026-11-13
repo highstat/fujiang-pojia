@@ -1,13 +1,35 @@
 ---
-title: Fingerprint-to-vulnerability matching workflow
-cve: None
-severity: info
+id: "fingerprint-workflow"
+title: "Fingerprint-to-vulnerability matching workflow"
+kind: "workflow"
+cve: null
+related-cves: null
+cve-note: "None"
+severity: "info"
 cvss: 0
-product: Methodology
-ports: Any
-keywords: fingerprint, recon, mapping, version
+severity-basis: "cvss"
+severity-note: null
+product: "Methodology"
+versions: "-"
+ports: "Any"
+keywords: "fingerprint, recon, mapping, version"
+entry: "Asset fingerprinting and version-identification workflow"
 verified: false
-sources: Compiled from public sources (business-logic / implementation / configuration flaws without CVEs; see references below)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business-logic / implementation / configuration flaws without CVEs; see references below)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
 ## 1. Classify the asset first (determines which category to consult)

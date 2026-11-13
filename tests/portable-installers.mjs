@@ -6,9 +6,12 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { parseOptions, resolveDsh } from '../scripts/install.mjs';
+import { KNOWLEDGE_CATEGORIES, parseKnowledgeDocument } from '../plugin/lib/knowledge-schema.js';
+import { effectivePrompt } from '../plugin/lib/tool-integrations.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const installer = path.join(root, 'scripts/install.mjs');
+const launcherDirectory = path.join(root, 'scripts/installers');
 const unix = process.platform !== 'win32';
 
 function fixture(context) {
@@ -71,7 +74,7 @@ test('OpenCode dry run creates no directories', (context) => {
   assert.match(result.stdout, /Dry run/);
 });
 
-test('OpenCode installs the exact prompt and all nine complete knowledge skills without config edits', (context) => {
+test('OpenCode preserves the source prompt plus tool guidance and all knowledge skills without config edits', (context) => {
   const directory = fixture(context);
   const destination = path.join(directory, 'custom config');
   fs.mkdirSync(destination);
@@ -82,16 +85,17 @@ test('OpenCode installs the exact prompt and all nine complete knowledge skills 
   successful(result);
   const agent = fs.readFileSync(path.join(destination, 'agents/fujiang.md'), 'utf8');
   const marker = '\n---\n\n';
-  assert.equal(agent.slice(agent.indexOf(marker) + marker.length), JSON.parse(fs.readFileSync(path.join(root, 'prompt-custom.json'))).text);
+  assert.equal(agent.slice(agent.indexOf(marker) + marker.length), effectivePrompt(JSON.parse(fs.readFileSync(path.join(root, 'prompt-custom.json'))).text));
   assert.match(agent, /^model: "deepseek\/example"$/m);
   assert.doesNotMatch(agent.slice(0, agent.indexOf(marker)), /permissions?:|tools:/);
   assert.equal(fs.readFileSync(path.join(destination, 'opencode.jsonc'), 'utf8'), originalConfig);
   assert.equal(fs.readFileSync(path.join(destination, 'auth.json'), 'utf8'), '{"fixture":"unchanged"}');
-  const categories = fs.readdirSync(path.join(root, 'plugin/knowledge'));
-  assert.equal(categories.length, 9);
+  const categories = fs.readdirSync(path.join(root, 'plugin/knowledge'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  assert.deepEqual(categories.sort(), [...KNOWLEDGE_CATEGORIES].sort());
   for (const category of categories) {
     const source = path.join(root, 'plugin/knowledge', category);
-    const name = /^name:\s*(\S+)/m.exec(fs.readFileSync(path.join(source, 'SKILL.md'), 'utf8'))[1];
+    const name = parseKnowledgeDocument(fs.readFileSync(path.join(source, 'SKILL.md'), 'utf8')).fields.name;
     compareDirectory(source, path.join(destination, 'skills', name));
   }
   assert.equal(fs.existsSync(path.join(destination, 'plugins')), false);
@@ -212,21 +216,23 @@ test('Harness Desktop installation requires an initialized Desktop profile', { s
 test('Unix launchers parse and run from outside the repository', { skip: !unix }, (context) => {
   const directory = fixture(context);
   for (const filename of ['install.sh', 'run-installer.command', 'install-opencode.sh', 'install-opencode.command']) {
-    successful(spawnSync('/bin/sh', ['-n', path.join(root, filename)], { encoding: 'utf8' }));
-    successful(spawnSync('/bin/sh', [path.join(root, filename), '--help'], { cwd: directory, encoding: 'utf8' }));
+    successful(spawnSync('/bin/sh', ['-n', path.join(launcherDirectory, filename)], { encoding: 'utf8' }));
+    successful(spawnSync('/bin/sh', [path.join(launcherDirectory, filename), '--help'], { cwd: directory, encoding: 'utf8' }));
   }
   const destination = path.join(directory, 'shell config');
-  successful(spawnSync('/bin/sh', [path.join(root, 'install-opencode.sh'), '--config-dir', destination], { cwd: directory, encoding: 'utf8' }));
+  successful(spawnSync('/bin/sh', [path.join(launcherDirectory, 'install-opencode.sh'), '--config-dir', destination], { cwd: directory, encoding: 'utf8' }));
   assert.ok(fs.existsSync(path.join(destination, 'agents/fujiang.md')));
 });
 
-test('native OpenCode discovers the primary agent with unchanged system text', { skip: !process.env.FUJIANG_OPENCODE_BIN }, (context) => {
+test('native OpenCode discovers the primary agent with source prompt and additive tool guidance', { skip: !process.env.FUJIANG_OPENCODE_BIN }, (context) => {
   const directory = fixture(context);
   const config = path.join(directory, 'config');
   successful(run(['opencode', '--config-dir', config], directory));
   const result = spawnSync(process.env.FUJIANG_OPENCODE_BIN, ['debug', 'agents', '--standalone'], {
     cwd: directory, encoding: 'utf8', timeout: 30000,
-    env: { ...process.env, HOME: directory, USERPROFILE: directory, OPENCODE_CONFIG_DIR: config,
+    env: { PATH: process.env.PATH, LANG: process.env.LANG || 'en_US.UTF-8',
+      ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}),
+      HOME: directory, USERPROFILE: directory, OPENCODE_CONFIG_DIR: config,
       XDG_CONFIG_HOME: path.join(directory, 'xdg-config'), XDG_DATA_HOME: path.join(directory, 'data'),
       XDG_CACHE_HOME: path.join(directory, 'cache'), XDG_STATE_HOME: path.join(directory, 'state') },
   });
@@ -234,5 +240,5 @@ test('native OpenCode discovers the primary agent with unchanged system text', {
   const agent = JSON.parse(result.stdout).find((entry) => entry.id === 'fujiang');
   assert.ok(agent, 'OpenCode must discover fujiang');
   assert.equal(agent.mode, 'primary');
-  assert.equal(agent.system, JSON.parse(fs.readFileSync(path.join(root, 'prompt-custom.json'))).text);
+  assert.equal(agent.system, effectivePrompt(JSON.parse(fs.readFileSync(path.join(root, 'prompt-custom.json'))).text).trimEnd());
 });

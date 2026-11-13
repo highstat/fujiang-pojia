@@ -1,18 +1,38 @@
 ﻿---
-title: MongoDB Unauthenticated Access (Dump the Database Directly)
-cve: None (misconfiguration)
-severity: critical
-cvss: 9.0
-product: MongoDB
-versions: Any (auth disabled)
-ports: 27017
-keywords: mongodb, unauthenticated, database-dump, database, nosql
-entry: mongod has no auth and is exposed
+id: "mongodb-unauth"
+title: "MongoDB Unauthenticated Access (Dump the Database Directly)"
+kind: "configuration"
+cve: null
+related-cves: null
+cve-note: "None (misconfiguration)"
+severity: "critical"
+cvss: 9
+severity-basis: "cvss"
+severity-note: null
+product: "MongoDB"
+versions: "Any (auth disabled)"
+ports: "27017"
+keywords: "mongodb, unauthenticated, database-dump, database, nosql"
+entry: "mongod has no auth and is exposed"
 verified: false
-sources: Compiled from public sources (misconfiguration class)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (misconfiguration class)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprint
+## Fingerprinting
 
 ```
 nc -vz target 27017
@@ -38,14 +58,14 @@ mongosh "mongodb://target:27017/app" --quiet --eval 'db.users.find({},{username:
 # Check: username/password hashes obtained = hit
 ```
 
-## Exploitation steps
+## Exploitation Steps
 
 1. Start with listDatabases (read-only);
 2. Pick a business database (app/member/admin) and take 5 documents;
 3. Feed hashes to hashcat; session tables can be used to forge logins directly;
 4. Evidence: database name + collection name + one record (redacted).
 
-## Remediation and mitigation
+## Remediation and Mitigation
 
 - Enable auth + strong passwords; listen on internal interfaces only; disable `$where`.
 

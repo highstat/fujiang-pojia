@@ -11,10 +11,10 @@ import path from 'node:path';
 import os from 'node:os';
 import net from 'node:net';
 import { domainToASCII } from 'node:url';
+import { KNOWLEDGE_CATEGORIES, parseKnowledgeDocument } from './knowledge-schema.js';
 
 const STAGES = ['recon', 'fingerprint', 'match', 'verify', 'exploit', 'lateral', 'report'];
 const MAX_CAMPAIGNS = 100;
-const FRONTMATTER = /^(?:\uFEFF)?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
 
 const messageOf = (error) => String(error?.message || error).slice(0, 1600);
 const clamp = (value, limit) => (typeof value === 'string' ? value.slice(0, limit) : '');
@@ -95,17 +95,7 @@ function assertInScope(host, scope) {
 }
 
 function parseFrontmatter(markdown) {
-  const match = FRONTMATTER.exec(markdown);
-  if (!match) return {};
-  const fields = {};
-  for (const line of match[1].split(/\r?\n/)) {
-    const i = line.indexOf(':');
-    if (i <= 0) continue;
-    const key = line.slice(0, i).trim();
-    if (!/^[a-z][a-z0-9-]*$/.test(key)) continue;
-    fields[key] = line.slice(i + 1).trim().replace(/^["']|["']$/g, '');
-  }
-  return fields;
+  return parseKnowledgeDocument(markdown).fields;
 }
 
 const STOPWORDS = new Set(['gateway','server','service','client','web','http','https','httpd','api','admin','login','default','remote','manager','console','portal','access','open','source','code','test','main','index','config','system','vpn','ssl','tls','ipsec','cloud','security','edge','app','gate','proxy','auth']);
@@ -119,16 +109,6 @@ const tokens = (value) => String(value || '')
 
 /** Build the content index: one record = one vulnerability entry. */
 export function createKbIndex(corpusDir) {
-  const walkAll = (dir, out = []) => {
-    let items = [];
-    try { items = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
-    for (const item of items) {
-      const full = path.join(dir, item.name);
-      if (item.isDirectory()) walkAll(full, out);
-      else if (item.name.toLowerCase().endsWith('.md')) out.push(full);
-    }
-    return out;
-  };
   function build() {
     const entries = [];
     let categories = [];
@@ -142,11 +122,20 @@ export function createKbIndex(corpusDir) {
       for (const file of files) {
         let text = '';
         try { text = fs.readFileSync(path.join(dir, file), 'utf8'); } catch { continue; }
-        const f = parseFrontmatter(text);
+        let f;
+        try { f = parseFrontmatter(text); } catch { continue; }
+        const cve = /^CVE-\d{4}-\d{4,}$/.test(f.cve || '') ? f.cve : null;
         entries.push({
           file, category, path: path.join(dir, file),
+          id: f.id || file.replace(/\.md$/, ''),
+          kind: f.kind || (cve ? 'cve' : 'implementation'),
           title: f.title || file,
-          cve: f.cve || '',
+          cve,
+          relatedCves: String(f['related-cves'] || '').split(/,\s*/).filter(Boolean),
+          cveNote: f['cve-note'] || null,
+          verified: f.verified === true,
+          kev: typeof f.kev === 'boolean' ? f.kev : null,
+          epss: typeof f.epss === 'number' ? f.epss : null,
           severity: f.severity || 'medium',
           product: f.product || '',
           versions: f.versions || '',
@@ -154,7 +143,7 @@ export function createKbIndex(corpusDir) {
           ports: String(f.ports || '').split(/[,\s]+/).filter((p) => /^\d+$/.test(p)).map(Number),
           keywordList: tokens(f.keywords),
           rawKeywords: String(f.keywords || '').split(/[,，、\s]+/).map((x) => x.trim()).filter((x) => x.length >= 2),
-          text: tokens([f.title, f.product, f.cve, f.keywords, f.entry, f.versions].join(' ')),
+          text: tokens([f.title, f.product, cve, f['related-cves'], f.keywords, f.entry, f.versions].join(' ')),
         });
       }
     }
@@ -193,8 +182,9 @@ export function createKbIndex(corpusDir) {
       const productTokens = tokens(item.product);
       const productHit = productTokens.some((t) => t.length >= 3 && !STOPWORDS.has(t) && hasWord(haystackText, t));
       if (productHit) { score += 60; why.push('Product ' + item.product); }
-      if (item.cve && item.cve !== '\u65e0' && hasWord(haystackText, item.cve)) {
-        score += 20; why.push('CVE ' + item.cve);
+      const matchingCve = [item.cve, ...item.relatedCves].find((cve) => cve && hasWord(haystackText, cve));
+      if (matchingCve) {
+        score += 20; why.push('CVE ' + matchingCve);
       }
       const kwHits = item.keywordList.filter((k) => k.length >= 3 && !STOPWORDS.has(k) && hasWord(haystackText, k));
       if (kwHits.length) {
@@ -223,6 +213,13 @@ export function createKbIndex(corpusDir) {
       category: hit.item.category,
       title: hit.item.title,
       cve: hit.item.cve,
+      id: hit.item.id,
+      kind: hit.item.kind,
+      relatedCves: hit.item.relatedCves,
+      cveNote: hit.item.cveNote,
+      verified: hit.item.verified,
+      kev: hit.item.kev,
+      epss: hit.item.epss,
       severity: hit.item.severity,
       product: hit.item.product,
       versions: hit.item.versions,
@@ -288,8 +285,11 @@ export function createSkillIndex({ home, knowledgeDir, knowledgeEnabled = () => 
     if (knowledgeDir) {
       // Index both categories (SKILL.md) and individual vulnerability entries so the AI can directly find specific PoCs.
       for (const file of walkAll(knowledgeDir)) {
+        const relative = path.relative(knowledgeDir, file).split(path.sep);
+        if (relative.length !== 2 || !KNOWLEDGE_CATEGORIES.includes(relative[0])) continue;
         const base = path.basename(file);
-        const meta = fields(file);
+        let meta;
+        try { meta = parseKnowledgeDocument(fs.readFileSync(file, 'utf8')).fields; } catch { continue; }
         const category = path.basename(path.dirname(file));
         if (base.toLowerCase() === 'skill.md') {
           entries.push({ name: 'kb-' + (meta.name || category).replace(/^kb-/, ''), description: meta.description || '', category, source: 'knowledge', path: file });

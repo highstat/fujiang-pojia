@@ -1,18 +1,38 @@
 ﻿---
-title: Unauthenticated Redis → steal admin sessions / tokens for direct admin access
-cve: None (configuration flaw)
-severity: critical
+id: "redis-session-forgery"
+title: "Unauthenticated Redis → steal admin sessions / tokens for direct admin access"
+kind: "configuration"
+cve: null
+related-cves: null
+cve-note: "None (configuration flaw)"
+severity: "critical"
 cvss: 9.1
-product: Custom admin panels (sessions/tokens stored in Redis)
-versions: Any
-ports: 6379
-keywords: redis, unauthenticated access, session, token, admin panel, takeover
-entry: login/session/token keys in Redis
+severity-basis: "cvss"
+severity-note: null
+product: "Custom admin panels (sessions/tokens stored in Redis)"
+versions: "Any"
+ports: "6379"
+keywords: "redis, unauthenticated access, session, token, admin panel, takeover"
+entry: "login/session/token keys in Redis"
 verified: false
-sources: Compiled from public sources (configuration flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (configuration flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 redis-cli -h target ping          → PONG (unauthenticated access)

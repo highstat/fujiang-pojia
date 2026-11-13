@@ -1,17 +1,38 @@
 ---
-title: Source-code / backup / configuration disclosure
-cve: None (deployment flaw)
-severity: high
+id: "repo-config-backup-leak"
+title: "Source-code / backup / configuration disclosure"
+kind: "configuration"
+cve: null
+related-cves: null
+cve-note: "None (deployment flaw)"
+severity: "high"
 cvss: 7.5
-product: General web applications (custom PHP/Java/Node sites)
-versions: Any
-ports: 80, 443, 8080
-keywords: .git, .svn, env, backup, zip, sourcemap, swagger, source-code disclosure
+severity-basis: "cvss"
+severity-note: null
+product: "General web applications (custom PHP/Java/Node sites)"
+versions: "Any"
+ports: "80, 443, 8080"
+keywords: ".git, .svn, env, backup, zip, sourcemap, swagger, source-code disclosure"
+entry: "Public repository metadata, configuration, and backup files"
 verified: false
-sources: Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 Scan these path categories in priority order (highest hit rates on this type of site):
 
@@ -57,7 +78,9 @@ npx source-map-explorer app.js.map
 4. DB access → member/order/agent/withdrawal-review tables; OSS AK access → enumerate KYC identity documents and statements in buckets.
 5. These are static files and leave no deployed artifacts, but downloads leave access-log traces (such as `GET /.git/HEAD`); mark your request times when collecting evidence.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Apply consistent reverse-proxy deny rules: `\.(git|svn|hg)(/|$)`, `\.(zip|tar\.gz|sql|bak|swp|old|save)$`, `\.env`, `\.map$`.
 - Store backups outside webroot; exclude `.env`, `.git`, and sourcemaps from production CI/CD deployments.

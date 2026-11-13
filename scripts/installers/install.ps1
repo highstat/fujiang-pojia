@@ -11,7 +11,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$bundleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$bundleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $sourcePlugin = Join-Path $bundleRoot 'plugin'
 $sourcePrompt = Join-Path $bundleRoot 'prompt-custom.json'
 $logPath = Join-Path $bundleRoot 'install.log'
@@ -165,7 +165,7 @@ if (-not $dshExecutable -and $PromptForDshPath -and -not $DryRun -and [string]::
   }
 }
 if (-not $dshExecutable) {
-  throw 'DSH command-line tool not found. Run .\install.ps1 -DshCommand "D:\App\DeepSeek Harness" (replace with the real install directory or the dsh.cmd path). If the data directory was moved too, also pass -DshHome "D:\data\.dsh"; do not use the program install directory as the data directory.'
+  throw 'DSH command-line tool not found. Run .\scripts\installers\install.ps1 -DshCommand "D:\App\DeepSeek Harness" (replace with the real install directory or the dsh.cmd path). If the data directory was moved too, also pass -DshHome "D:\data\.dsh"; do not use the program install directory as the data directory.'
 }
 
 if ($Profile -eq 'desktop') {

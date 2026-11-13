@@ -1,18 +1,38 @@
 ﻿---
-title: Unauthenticated Druid monitoring → session disclosure/admin takeover (essential for RuoYi-based systems)
-cve: None (configuration flaw)
-severity: critical
-cvss: 9.0
-product: Alibaba Druid connection-pool monitoring (RuoYi/jeecg, etc.)
-versions: Any
-ports: 80, 443, 8080
-keywords: druid, monitoring, session, unauthenticated, RuoYi, jeecg
-entry: /druid/index.html  /druid/websession.html
+id: "druid-monitor-unauth"
+title: "Unauthenticated Druid monitoring → session disclosure/admin takeover (essential for RuoYi-based systems)"
+kind: "configuration"
+cve: null
+related-cves: null
+cve-note: "None (configuration flaw)"
+severity: "critical"
+cvss: 9
+severity-basis: "cvss"
+severity-note: null
+product: "Alibaba Druid connection-pool monitoring (RuoYi/jeecg, etc.)"
+versions: "Any"
+ports: "80, 443, 8080"
+keywords: "druid, monitoring, session, unauthenticated, RuoYi, jeecg"
+entry: "/druid/index.html  /druid/websession.html"
 verified: false
-sources: Compiled from public sources (configuration flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (configuration flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 GET /druid/index.html        → 200 (Druid console)

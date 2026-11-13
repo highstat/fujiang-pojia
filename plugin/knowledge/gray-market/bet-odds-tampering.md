@@ -1,22 +1,42 @@
 ﻿---
-title: Tampering with betting/settlement odds and multipliers (financial impact)
-cve: None (business logic)
-severity: critical
-cvss: 9.0
-product: Gambling/lottery betting endpoints
-versions: Any
-ports: 80, 443
-keywords: bet, odds, odds, multipliers, settlement, tampering
-entry: Modify odds/multiple in the betting body
+id: "bet-odds-tampering"
+title: "Tampering with betting/settlement odds and multipliers (financial impact)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
+cvss: 9
+severity-basis: "cvss"
+severity-note: null
+product: "Gambling/lottery betting endpoints"
+versions: "Any"
+ports: "80, 443"
+keywords: "bet, odds, odds, multipliers, settlement, tampering"
+entry: "Modify odds/multiple in the betting body"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
-/api/bet/create    {"odds":1.98,"amount":100,"issue":"2024110"}
-/api/bet/settle    /api/lottery/bet   /api/game/bet
+/api/bet/create {"odds":1.98,"amount":100,"issue":"2024110"}
+/api/bet/settle /api/lottery/bet /api/game/bet
 ```
 
 Odds/multipliers should be calculated server-side according to the game rules; `odds`, `multiple`, `rate`, or `payout` in the request body are potential tampering points.
@@ -56,4 +76,4 @@ POST /api/bet/settle HTTP/1.1
 
 ## References
 
-- OWASP WSTG-BUSL-01；CWE-472。
+- OWASP WSTG-BUSL-01; CWE-472.

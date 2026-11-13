@@ -1,18 +1,38 @@
 ﻿---
-title: Host header poisoning (hijacked password-reset links → arbitrary account takeover)
-cve: None (implementation flaw)
-severity: critical
+id: "host-header-poisoning"
+title: "Host header poisoning (hijacked password-reset links → arbitrary account takeover)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "critical"
 cvss: 9.1
-product: Custom password-recovery/invitation links (URLs built from Host)
-versions: Any
-ports: 80, 443
-keywords: host, header, poisoning, password reset, links, hijacking
-entry: Host / X-Forwarded-Host in POST /api/user/findpwd
+severity-basis: "cvss"
+severity-note: null
+product: "Custom password-recovery/invitation links (URLs built from Host)"
+versions: "Any"
+ports: "80, 443"
+keywords: "host, header, poisoning, password reset, links, hijacking"
+entry: "Host / X-Forwarded-Host in POST /api/user/findpwd"
 verified: false
-sources: Compiled from public sources (implementation flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (implementation flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - URLs in password-recovery/invitation/payment-callback emails match the request Host;
 - A reverse proxy is present and the application reads `X-Forwarded-Host`.

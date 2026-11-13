@@ -1,18 +1,38 @@
 ﻿---
-title: Weak operator-admin passwords + CAPTCHA reuse (the most common entry point on gambling sites)
-cve: None (business logic)
-severity: critical
+id: "operator-backend-weak-login"
+title: "Weak operator-admin passwords + CAPTCHA reuse (the most common entry point on gambling sites)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
 cvss: 9.1
-product: Custom operator/agent admin panels (turnkey gambling platforms)
-versions: Any
-ports: 80, 443, 8080, 8443
-keywords: weak passwords, admin panel, CAPTCHA reuse, operator, turnkey gambling platform, login
-entry: Login endpoints for /admin /manage /agent
+severity-basis: "cvss"
+severity-note: null
+product: "Custom operator/agent admin panels (turnkey gambling platforms)"
+versions: "Any"
+ports: "80, 443, 8080, 8443"
+keywords: "weak passwords, admin panel, CAPTCHA reuse, operator, turnkey gambling platform, login"
+entry: "Login endpoints for /admin /manage /agent"
 verified: false
-sources: Compiled from public sources (business logic flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 /admin  /manage  /operator  /agent  /backend

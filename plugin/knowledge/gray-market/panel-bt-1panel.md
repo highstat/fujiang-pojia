@@ -1,18 +1,38 @@
 ﻿---
-title: BT / 1Panel weak passwords and unauthenticated access (the most common admin panels on black/gray-market sites)
-cve: None (configuration flaw)
-severity: critical
+id: "panel-bt-1panel"
+title: "BT / 1Panel weak passwords and unauthenticated access (the most common admin panels on black/gray-market sites)"
+kind: "configuration"
+cve: null
+related-cves: null
+cve-note: "None (configuration flaw)"
+severity: "critical"
 cvss: 9.2
-product: BT-Panel / 1Panel / Xiaopi phpstudy
-versions: Any
-ports: 8888, 888, 8443, 2087, 9999
-keywords: BT-Panel, bt, 1panel, panel, weak passwords, unauthenticated access, server
-entry: :8888/<random-entry-path> or :8888/login
+severity-basis: "cvss"
+severity-note: null
+product: "BT-Panel / 1Panel / Xiaopi phpstudy"
+versions: "Any"
+ports: "8888, 888, 8443, 2087, 9999"
+keywords: "BT-Panel, bt, 1panel, panel, weak passwords, unauthenticated access, server"
+entry: ":8888/<random-entry-path> or :8888/login"
 verified: false
-sources: Compiled from public sources (configuration flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (configuration flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 GET http://target:8888/        → BT login page / 301 to a random entry path

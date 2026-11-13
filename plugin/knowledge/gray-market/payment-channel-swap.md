@@ -1,18 +1,38 @@
 ﻿---
-title: Payment-channel / merchant-ID tampering (deposits sent to the attacker's account)
-cve: None (business logic)
-severity: critical
+id: "payment-channel-swap"
+title: "Payment-channel / merchant-ID tampering (deposits sent to the attacker's account)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
 cvss: 9.4
-product: Custom deposit/payment routing (turnkey gambling platforms)
-versions: Any
-ports: 80, 443
-keywords: payment channel, merchant ID, deposit, routing, tampering, funds
-entry: channelId / merchantId / notifyUrl in /api/pay/create
+severity-basis: "cvss"
+severity-note: null
+product: "Custom deposit/payment routing (turnkey gambling platforms)"
+versions: "Any"
+ports: "80, 443"
+keywords: "payment channel, merchant ID, deposit, routing, tampering, funds"
+entry: "channelId / merchantId / notifyUrl in /api/pay/create"
 verified: false
-sources: Compiled from public sources (business logic flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 POST /api/pay/create   {"amount":100,"channelId":3,"merchantId":""}

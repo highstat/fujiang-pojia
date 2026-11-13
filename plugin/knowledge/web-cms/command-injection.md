@@ -1,15 +1,35 @@
 ﻿---
-title: Command injection (semicolons / backticks / $() and blind out-of-band exfiltration)
-cve: None (implementation flaw)
-severity: critical
+id: "command-injection"
+title: "Command injection (semicolons / backticks / $() and blind out-of-band exfiltration)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "critical"
 cvss: 9.1
-product: Any feature that invokes a shell (ping/traceroute/conversion/compression)
-versions: Any
-ports: 80, 443
-keywords: command injection, rce, ping, backticks, blind injection, shell
-entry: Parameters concatenated into system/exec/popen
+severity-basis: "cvss"
+severity-note: null
+product: "Any feature that invokes a shell (ping/traceroute/conversion/compression)"
+versions: "Any"
+ports: "80, 443"
+keywords: "command injection, rce, ping, backticks, blind injection, shell"
+entry: "Parameters concatenated into system/exec/popen"
 verified: false
-sources: Compiled from public sources (implementation flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (implementation flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
 ## Fingerprinting

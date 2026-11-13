@@ -1,18 +1,38 @@
 ﻿---
-title: CORS misconfiguration (read other users' API data with credentials)
-cve: None (configuration flaw)
-severity: high
+id: "cors-misconfig-credential"
+title: "CORS misconfiguration (read other users' API data with credentials)"
+kind: "configuration"
+cve: null
+related-cves: null
+cve-note: "None (configuration flaw)"
+severity: "high"
 cvss: 8.1
-product: Custom API (reflected Origin + ACAC:true)
-versions: Any
-ports: 80, 443
-keywords: cors, cross-origin, credentialed, origin, disclosure
-entry: Reflected Origin with Allow-Credentials: true
+severity-basis: "cvss"
+severity-note: null
+product: "Custom API (reflected Origin + ACAC:true)"
+versions: "Any"
+ports: "80, 443"
+keywords: "cors, cross-origin, credentialed, origin, disclosure"
+entry: "Reflected Origin with Allow-Credentials: true"
 verified: false
-sources: Compiled from public sources (configuration flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (configuration flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```bash
 curl -s -D- -o /dev/null 'https://target/api/user/info' -H 'Origin: https://evil.example' | grep -i 'access-control'

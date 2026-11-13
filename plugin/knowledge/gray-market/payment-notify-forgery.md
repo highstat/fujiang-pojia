@@ -1,17 +1,38 @@
 ---
-title: Payment-callback forgery and amount tampering (financial impact)
-cve: None (business logic)
-severity: critical
+id: "payment-notify-forgery"
+title: "Payment-callback forgery and amount tampering (financial impact)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
 cvss: 9.1
-product: Custom deposit/payout callbacks (common on gambling, money-mule payment-processing, and digital-code sales sites)
-versions: Any
-ports: 80, 443
-keywords: notify, callback, callback forgery, amount tampering, replay, signature verification, money-mule payment processing
+severity-basis: "cvss"
+severity-note: null
+product: "Custom deposit/payout callbacks (common on gambling, money-mule payment-processing, and digital-code sales sites)"
+versions: "Any"
+ports: "80, 443"
+keywords: "notify, callback, callback forgery, amount tampering, replay, signature verification, money-mule payment processing"
+entry: "Payment-provider notification and callback endpoints"
 verified: false
-sources: Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - Order-creation endpoints return `payUrl` / `orderNo` / `amount` / `sign`;
 - Callback addresses resemble `/notify/alipay`, `/pay/callback`, `/api/recharge/notify`, `/api/daifu/notify`;
@@ -22,7 +43,9 @@ sources: Compiled from public sources (business logic / implementation / configu
 - Ability to register an account and create a minimum-value order (to observe the callback format and order state machine).
 - Access to a callback sample: often from exposed API documentation (`/doc.html`, `/swagger-ui.html`), leaked logs, or `notify_url` in frontend source.
 
-## PoC (test the three flaws separately)
+## PoC
+
+### PoC (test the three flaws separately)
 
 ```http
 ### A. No callback signature verification — directly forge success
@@ -50,7 +73,9 @@ Content-Type: application/json
 4. One level deeper: enumerable `orderNo` → forge "paid" for other users' orders (disruptive to operations; describe the affected scope in the report rather than repeating it at scale).
 5. Record order number, amount, raw requests/responses, and before/after balances; explicitly estimate the "upper bound of financial impact" as the per-order amount × possible replays.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Trust amounts only from the server-side order table; use callback `amount` only for comparison and reject mismatches.
 - Require signature verification (RSA2 / merchant key) and an allowlist of callback-source IPs (Alipay/WeChat/bank egress ranges).

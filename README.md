@@ -1,216 +1,153 @@
-**[Join the channel: https://t.me/DeepSeek22](https://t.me/DeepSeek22)**
+# Fujiang Pojia
 
-Welcome to the channel. Follow Fujiang Pojia.
+### English fork · Harness plugin · OpenCode adapter
 
-<a href="https://t.me/DeepSeek22"><img src="./telegram-channel.png" alt="Fujiang Pojia channel QR code, click to join" width="320"></a>
+Custom prompt controls, an offline security knowledge base, and assessment-workflow tools for DeepSeek Harness. The OpenCode adapter installs the preserved source prompt plus additive tool-use guidance and knowledge as a selectable agent and skills.
 
-# Fujiang Pojia (Armor Break)
+> **Fork version: 0.20.14**, based on upstream **0.20.13**. Knowledge maintenance and repository cleanup are currently **Unreleased**. This version belongs to this fork; it is not a new release from the original author.
 
-Fujiang Pojia (Armor Break): a prompt-injection plugin for DeepSeek Harness. Activation word `fujiang` (English, case-insensitive). Ask everything in plain language. Bundles a skill library (download and invocation), a CVE/PoC knowledge base, vulnerability-report updates, and a fully automatic authorized-pentest workflow. Current version: 0.20.14. Disclaimer included. Plugin screenshots at the bottom.
+[Installation](docs/installation.md) · [Harness features](docs/features.md) · [Context7 / REA](docs/tool-integrations.md) · [Screenshots](docs/screenshots/README.md) · [Changelog](CHANGELOG.md) · [Disclaimer](DISCLAIMER.md)
 
-This project installs `@deepseek-ai/dsh-prompt-custom` into the DeepSeek Harness configuration directory. The plugin lives in `plugin/`; the prompt configuration is kept separately in `prompt-custom.json`.
+## What this fork includes
 
-## Download and install
+- English interface text, documentation, and bundled knowledge.
+- Installers for Windows, macOS, and Linux, with dry-run and backup support.
+- A native Harness plugin and a separate OpenCode agent adapter.
+- **300 knowledge entries across 11 categories**, with stable IDs and a validated metadata schema.
+- **20 red-team/pentest and 27 blue-team/SOC playbooks**, covering identity, cloud, containers, CI/CD, detections and incident response.
+- Explicit verification fields and dated CISA KEV / FIRST EPSS metadata.
+- Context7 documentation MCP, REA artifact analysis, and task-specific tool-use guidance shared by both adapters.
+- Offline regression tests and a cross-platform CI configuration.
 
-On the repository page click **Code → Download ZIP**, extract it, and install; cloning the repository with Git works too.
+The activation word in the bundled prompt is `fujiang` (case-insensitive). Review `prompt-custom.json` before installing or redistributing it: the installer copies your current local prompt, which may contain personal configuration.
 
-### Choose your platform and host
+## Choose your host
 
-For **DeepSeek Harness**:
+| Capability | DeepSeek Harness | OpenCode |
+| --- | --- | --- |
+| Custom prompt | Plugin settings and prompt configuration | Body of the selected `fujiang` agent |
+| Offline knowledge | Eleven registered category skills | Eleven copied category skills |
+| Settings UI and report browser | Native plugin panels | Not included |
+| Fingerprint matching and workflow tools | Harness runtime integration | Not included |
+| REA / AboutSecurity download controls | On-demand skill-library integration | Not included |
+| Updates | Re-run the Harness installer and restart Harness | Re-run the adapter to refresh its snapshot |
 
-- **Windows:** `run-installer.cmd` or `install.ps1` (instructions below).
-- **macOS:** `run-installer.command`, or `sh ./install.sh harness` in Terminal.
-- **Linux:** `sh ./install.sh harness --profile <your-profile>` with an existing DSH CLI installation.
+The adapter leaves API keys, permission rules, provider settings, default agents/models, and existing `opencode.json` / `opencode.jsonc` files unchanged. Selecting the agent does not guarantee a particular response or bypass provider restrictions. Model requests may incur provider charges.
 
-The new macOS/Linux installer requires Node.js 20 or newer. Quit Harness before installing. Use `sh ./install.sh harness --dry-run` to preview; pass `--dsh-command` and `--dsh-home` for nonstandard locations. The `desktop` profile must already be initialized; Linux CLI users should select their existing profile explicitly.
+## Quick start
 
-For **OpenCode with DeepSeek**, use `install-opencode.command` on macOS, `sh ./install-opencode.sh` on Linux/macOS, or `install-opencode.cmd` / `install-opencode.ps1` on Windows. This requires Node.js 20 or newer and installs a native **fujiang agent plus nine offline knowledge skills**, not the Harness UI or its runtime tools. It copies the current prompt text exactly and does not change API keys, permissions, or the default agent/model. Connect DeepSeek inside OpenCode and select the agent and model yourself.
+Download and extract this repository, or clone your copy. Run commands from the repository root. Install the host application first; these scripts do not install Harness, OpenCode, Node.js, or API credentials. Do not run them with elevated privileges.
 
-See [cross-platform installation and OpenCode compatibility](./docs/installation.md) for project-local installs, backups, model selection, and the exact portability limits.
+### DeepSeek Harness
 
-### Harness on Windows
+Initialize the intended Harness profile once, then **quit Harness completely**, including tray processes. The installer never closes or restarts the application for you.
 
-1. Start the official DeepSeek Harness Desktop once so the `desktop` profile is initialized.
-2. Quit Harness completely, including "Quit" in the tray icon at the bottom right.
-3. Double-click **`run-installer.cmd`** in the extracted folder.
-4. Start Harness again yourself after installation finishes.
+| Platform | Launcher | Preview without changes |
+| --- | --- | --- |
+| Windows | Double-click [`scripts/installers/run-installer.cmd`](scripts/installers/run-installer.cmd) | `.\scripts\installers\install.ps1 -DryRun` |
+| macOS | Double-click [`scripts/installers/run-installer.command`](scripts/installers/run-installer.command) | `sh ./scripts/installers/install.sh harness --dry-run` |
+| Linux | `sh ./scripts/installers/install.sh harness --profile YOUR_PROFILE` | Add `--dry-run` to the same command |
 
-If the installer detects a running Harness, it asks you to quit and stops without touching any file. **The installer never closes or restarts Harness, and there is no `-NoRestart` switch.**
+For macOS or an initialized Desktop profile:
 
-```powershell
-# Run the installer after quitting Harness completely
-.\run-installer.cmd
-
-# Show the install plan only, change nothing
-.\install.ps1 -DryRun
+```sh
+sh ./scripts/installers/install.sh harness --dry-run
+sh ./scripts/installers/install.sh harness
 ```
 
-The installer uses the `desktop` profile by default. It looks for the DSH command-line tool shipped with Desktop via the running process path, the default install location, the registry, and Start-menu or desktop shortcuts, then tries the system PATH, and it supports installs on other drives such as D and E. If the double-click installer still cannot find it, paste the actual install folder or executable path when prompted.
+The portable installer requires **Node.js 20+**. The original Windows [`scripts/installers/install.ps1`](scripts/installers/install.ps1) uses PowerShell and the CLI bundled with Harness, without requiring an external Node.js installation. Linux requires an existing DSH CLI and an explicitly selected profile; this repository does not provide a Linux Desktop build.
 
-You can also point it at an install directory explicitly. The program directory and the `.dsh` data directory are two different places:
+The plugin declares Harness / `dsh-system-prompt` compatibility `>=0.2.1-rc.5 <0.3.0` and Cordis compatibility `>=4.0.5 <5`. These are declared ranges, not proof that every host version has been tested. See [installation details](docs/installation.md) for custom paths, backups, and troubleshooting.
 
-```powershell
-# Specify the program install directory; non-ASCII paths and spaces are fine
-.\install.ps1 -DshCommand "D:\Apps\DeepSeek Harness"
+### OpenCode with DeepSeek
 
-# Add the data directory only when the .dsh directory was moved as well
-.\install.ps1 -DshCommand "D:\Apps\DeepSeek Harness" -DshHome "E:\Data\.dsh"
+Requires **Node.js 20+**. The adapter targets OpenCode 2 agents and skills.
 
-# Preview only; no install, no path prompt
-.\install.ps1 -DryRun -DshCommand "D:\Apps\DeepSeek Harness"
-```
-
-`-DshCommand` also accepts the full path to `DeepSeek Harness.exe` or `dsh.cmd`. `-Profile` selects the profile name; when `-DshHome` is omitted, the existing `DSH_HOME` setting is honored.
-
-During installation the script copies the plugin to `$DSH_HOME\local-plugins\dsh-prompt-custom`, registers it with `dsh plugin --profile <profile> add <path>`, and copies the bundled prompt configuration to `$DSH_HOME\prompt-custom.json`. If an existing configuration differs from the new one, it is backed up next to the original first; if registration fails and a backup exists, the original prompt configuration is restored. When `DSH_HOME` is unset, `$env:USERPROFILE\.dsh` is used.
-
-After a successful install the script tries to record the time and version in a neighboring `install.log`. That file is not a full runtime log.
-
-### When the script is blocked
-
-The installer is a readable PowerShell script that mainly copies files and calls the DSH command-line tool. It contains no hidden-window launches, forced process kills, scheduled tasks, or WMI-created processes, and it starts with `-ExecutionPolicy RemoteSigned`. None of this constitutes a verdict from any security product.
-
-If Windows blocks the script because of the download-origin mark, verify the download source and the script contents first, then use "Unblock" in the file's Properties. You can compute the script hash with the command below and compare it with the value published by the author:
-
-```powershell
-Get-FileHash .\install.ps1 -Algorithm SHA256
-```
-
-You can also copy and register the plugin manually after quitting Harness completely. The example below uses the default data directory:
-
-```powershell
-# Create the target directory and copy the plugin files
-$pluginTarget = Join-Path $env:USERPROFILE '.dsh\local-plugins\dsh-prompt-custom'
-New-Item -ItemType Directory -Force -Path $pluginTarget | Out-Null
-Get-ChildItem -LiteralPath .\plugin -Force | ForEach-Object {
-  Copy-Item -LiteralPath $_.FullName -Destination $pluginTarget -Recurse -Force
-}
-
-# Register the plugin with the command-line tool shipped with Desktop
-& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop add $pluginTarget
-```
-
-To use the bundled `prompt-custom.json` with a manual install, back up any existing file of the same name first, then copy it to `$env:USERPROFILE\.dsh\prompt-custom.json`. Start Harness yourself when done.
-
-## Plugin UI and prompt configuration
-
-The plugin adds a "Fujiang Pojia" status toggle and a settings entry next to the input box, which enable or disable prompt injection. The settings panel provides:
-
-- **Vulnerability reports**: persist vulnerability records written by the AI, browsable by critical, high, medium, low, and informational severity.
-- **Custom prompt**: edit the prompt configuration.
-- **Skill library**: download, enable, or disable REA and AboutSecurity.
-- **Knowledge base**: browse and use the built-in CVE / PoC entries.
-- **Pentest workflow**: manage tasks, assets, verification steps, stages, and follow-up suggestions.
-
-The status entry uses the official `conversation.input.overlay` extension point so it does not disturb the input area's original layout. With custom prompt injection enabled, the plugin replaces the opening of the official `harness:identity` section with an empty section; disabling it restores the official opening while your own prompt text stays as it is.
-
-## Skill library download and AI invocation
-
-The skill library covers two upstream projects:
-
-- **REA reverse-engineering toolkit**: [morluto/rea](https://github.com/morluto/rea).
-- **AboutSecurity security-assessment skills**: [wgpsec/AboutSecurity](https://github.com/wgpsec/AboutSecurity).
-
-AboutSecurity downloads the current `master` branch archive from GitHub, extracts only the `skills/` directory, and registers the discovered skills once enabled. The download shows progress and can be cancelled; enabling and disabling adds or removes the skill provider, and deletion only touches files the plugin downloaded. Skill counts may change as upstream evolves.
-
-This repository downloads skill libraries and the REA installer on demand from upstream links and ships no full copy of them; third-party projects keep their own license terms.
-
-REA requires a compatible Node.js version: `^22.23.4 || ^24.22.1 || >=26.12.1`. When the plugin is installed through npm, lifecycle scripts are disabled, so that install path does not build Frida's optional native bindings. Whether a given tool works also depends on the runtime and analysis engine being available. AboutSecurity consists mainly of Markdown skill documents and needs no extra native runtime components.
-
-Once skills are registered, the AI can discover them in the available-skills catalog and read the relevant content on demand. Whether a skill is actually invoked depends on the session, model, tool configuration, and task context; a successful download does not mean every tool has been verified end to end.
-
-## Automated workflow and fingerprint matching
-
-The plugin provides local fingerprint matching and a task ledger. Matching and ledger writes happen on the local machine; skill downloads, online model calls, and actual target verification may generate network requests.
-
-| Endpoint | Purpose |
+| Platform | Launcher |
 | --- | --- |
-| `POST /api/dsh-prompt-custom/match` | Feed in a port, service banner, or product name and get ranked knowledge-base candidates with the match reasons. Weights: port 40, product 30, CVE 20, keywords 20, severity 5. |
-| `/api/dsh-prompt-custom/campaigns` | Manage scope, asset fingerprints, execution steps, attempt records, and task stages. The ledger lives in `$DSH_HOME/vuln-report/campaigns.json`. `GET ?id=` returns a task plus its next-step suggestions. |
+| Windows | [`scripts/installers/install-opencode.cmd`](scripts/installers/install-opencode.cmd) or [`scripts/installers/install-opencode.ps1`](scripts/installers/install-opencode.ps1) |
+| macOS | [`scripts/installers/install-opencode.command`](scripts/installers/install-opencode.command) or the shell command below |
+| Linux | [`scripts/installers/install-opencode.sh`](scripts/installers/install-opencode.sh) |
 
-The workflow is organized into these stages:
+For a project-local installation on macOS/Linux:
 
-**Recon → Fingerprint → Vulnerability matching → Feasibility verification → Exploitation → Lateral movement → Reporting**
+```sh
+sh ./scripts/installers/install-opencode.sh --project '/path/to/project' --dry-run
+sh ./scripts/installers/install-opencode.sh --project '/path/to/project'
+```
 
-Each task can be bound to one session, and a session holds at most one task. Through `campaign:context` the plugin gives the bound AI the task, stage, asset count, and follow-up suggestions, and can call `agent.followup(...)` to keep pushing. The task API offers `bind`, `unbind`, `kick`, and similar operations.
+On Windows:
 
-In the current implementation the user creates tasks in the plugin panel; the AI uses the existing task to record assets, steps, and results. Native tool endpoints include `kb_match`, `campaign_upsert`, `finding_upsert`, and `pipeline_next`; skill lookup goes through `skill_search` and `skill_read`. Native tool registration depends on a resolvable DSH tool service, and the local HTTP endpoints expose the same functionality.
+```powershell
+.\scripts\installers\install-opencode.ps1 -Project 'D:\Projects\My Project' -DryRun
+.\scripts\installers\install-opencode.ps1 -Project 'D:\Projects\My Project'
+```
 
-A task records its objective, progress, and completion flag. Automatic continuation runs at most 8 rounds by default and provides stall detection and next-step suggestions. Progress and stage help organize the work; they do not prove a vulnerability. Vulnerability reports should still be backed by verification results and evidence.
+Replace the example path with your project. Omit the project option for the default global destination. Add `--with-tools` (PowerShell: `-WithTools`) to register Context7 and pinned REA MCP servers in that scope; starting OpenCode can then download REA via npm. See [tool setup and runtime requirements](docs/tool-integrations.md). Installation makes no model request. In OpenCode, connect your DeepSeek provider, then explicitly select the `fujiang` agent and an available model. See the [OpenCode guide](docs/installation.md#opencode-with-deepseek) for model selection, isolated configuration, backups, and removal.
 
-## Built-in CVE / PoC knowledge base
+## Knowledge base
 
-The knowledge base lives in `plugin/knowledge/` and ships with the plugin, so enabling it needs no download. The content is registered as nine category skills through `skills.registerProvider`; the AI can discover them in the `available_skills` catalog and load them on demand.
+The knowledge ships in [`plugin/knowledge/`](plugin/knowledge/) and works offline. Categories cover Java components, Java web platforms, edge devices, Exchange / Active Directory, web CMSs, Linux privilege escalation, cloud / containers, business-site and API risks, triage / reporting, authorized red-team assessments, and blue-team operations. Start with the [knowledge index](plugin/knowledge/README.md) or the [expansion and source-policy guide](docs/knowledge-expansion.md).
 
-| Category skill | Main coverage |
+Entries distinguish CVEs, implementation flaws, configuration issues, business logic, and workflows. Metadata preserves related CVEs, verification evidence, and source dates. Schema validation checks structure and consistency; public-feed enrichment does **not** establish that a vulnerability was reproduced or that an entry applies to your target.
+
+| Guide | Purpose |
 | --- | --- |
-| `kb-java-deser` | Java deserialization and related component issues, including Log4Shell, Spring4Shell, Struts2, WebLogic, Shiro, Fastjson, and Java ECDSA signature verification. |
-| `kb-java-web` | Java and developer-collaboration platforms, including Confluence, GitLab, Jenkins, TeamCity, Solr, Tomcat, and Struts2. |
-| `kb-edge-device` | Edge-device issues, including PAN-OS, Ivanti, Pulse, Citrix, FortiOS, and F5. |
-| `kb-exchange-ad` | Exchange and Active Directory issues, including ProxyLogon, ProxyShell, ProxyNotShell, Zerologon, AD CS, PrintNightmare, MS17-010, BlueKeep, and Outlook. |
-| `kb-web-cms` | Websites and content-management systems, including Drupal, PHP, Laravel, ThinkPHP, vBulletin, Apache, and Joomla. |
-| `kb-linux-priv` | Linux privilege escalation, including PwnKit, Dirty Pipe, Baron Samedit, filesystem context, nf_tables, Looney Tunables, and overlayfs. |
-| `kb-cloud-container` | Cloud and container issues, including runc, cgroups, Docker API, Kubernetes, Redis, PostgreSQL, and Nacos. |
-| `kb-gray-market` | Business-site and API risks, including source and configuration leaks, broken object-level authorization, account tiers, payment callbacks, concurrency and idempotency, uploads, public buckets, export paths, SQL injection, and SSRF. |
-| `kb-triage` | From fingerprinting to CVE candidate selection, verification-evidence write-ups, and report templates. |
+| [Knowledge schema](plugin/knowledge/SCHEMA.md) | Fields, entry kinds, severity policy, and verification rules |
+| [Contributing and refreshing](plugin/knowledge/CONTRIBUTING.md) | Add entries, normalize metadata, and refresh public risk data |
+| [Knowledge changelog](plugin/knowledge/CHANGELOG.md) | Content and schema changes |
 
-Knowledge entries are compilations of public material and should not be treated as conclusions already verified against your target. Entries carry metadata such as `verified: false` and `sources:` to mark verification status and provenance; exploitation steps must be re-checked against the target version and preconditions.
+CISA KEV / FIRST EPSS fields are dated snapshots, not live intelligence. Refreshing them is an explicit maintenance action; installation, runtime lookups, and the default tests do not refresh public feeds.
 
-Each entry is a Markdown file whose metadata includes `title`, `cve`, `severity`, `cvss`, `product`, `versions`, `ports`, `keywords`, and more, with sections for fingerprint, preconditions, PoC, exploitation steps, remediation and mitigation, and references. Entries are re-read from disk when loaded, so knowledge-base updates take effect on later calls; category definitions live in `lib/knowledge.js`, and changing categories requires reloading the plugin.
+## Repository layout
 
-The knowledge base is enabled by default; the toggle state is stored in `$DSH_HOME/fujiang-skills/knowledge-state.json`. Disabling it stops feeding the related knowledge to the AI while the original files stay on disk; since the knowledge base ships with the package, no extra install or download is needed.
-
-## Compatibility and verification scope
-
-The plugin declares compatibility with the following versions, checked by the DSH plugin manager at install time:
-
-- DeepSeek Harness and `dsh-system-prompt`: `>=0.2.1-rc.5 <0.3.0`.
-- Cordis: `>=4.0.5 <5`.
-
-The plugin uses the public `systemPrompt`, `skills`, `tools`, agent lifecycle, and `webServer` services and installs without modifying Harness program files. Harness must be fully quit and restarted after installation.
-
-0.20.13 fixed Enter-to-send, Shift+Enter newline, and Esc being intercepted after the disclaimer was dismissed, and stopped IME candidate confirmation keys from triggering the dialog shortcuts. That verification covered the keyboard events and install-path fixes; it does not mean every skill, CVE entry, or automated flow has been verified end to end.
-
-## Prompt configuration and disclaimer
-
-`prompt-custom.json` is separate from the plugin program files and may contain personal configuration. When installing, backing up, or redistributing, make sure you are using the version you intend to use or share.
-
-See the [disclaimer](./DISCLAIMER.md) for usage notes and the boundary of responsibility. The project name and any mention of DeepSeek do not imply official endorsement.
-
-Search keywords: **Fujiang Pojia, armor break, DeepSeek, AI security assessment, skill library, vulnerability knowledge base**.
-
-## Translation checks
-
-Run the local regression tests without a Harness installation or network access:
-
-```bash
-node --test tests/english-localization.mjs tests/keyboard-regression.mjs
+```text
+fujiang-pojia/
+├── README.md                 Project overview and quick start
+├── CHANGELOG.md              Fork history and unreleased work
+├── DISCLAIMER.md             Usage boundaries
+├── prompt-custom.json        Prompt configuration copied during installation
+├── plugin/                   Native Harness package and its MIT license
+│   ├── lib/                  Runtime integrations and knowledge schema
+│   └── knowledge/            Offline entries, category skills, maintenance docs
+├── scripts/                  Installation and maintenance tools
+│   ├── installers/           Windows, macOS and Linux launchers
+│   ├── install.mjs           Shared portable installation engine
+│   └── *knowledge.mjs        Knowledge checks, normalization and enrichment
+├── tests/                    Automated checks and manual keyboard fixtures
+├── docs/                     Installation, features, activation note, screenshots
+└── .github/workflows/        Cross-platform test configuration
 ```
 
-These checks cover English-only source text and filenames, knowledge-base indexing and metadata, Markdown references, fingerprint matching, and disclaimer keyboard behavior. They do not execute any PoCs or verify the Windows installer.
+All platform launchers now live in [`scripts/installers/`](scripts/installers/README.md); earlier instructions that use root-level launcher paths must be updated. The launchers resolve repository files relative to their own location, so they work from another current directory. Detailed documentation and images live under `docs/`; OS metadata, local environment files, logs, and generated test artifacts are excluded through `.gitignore`.
 
-The portable installer suite uses temporary directories and a fake DSH CLI; it never modifies your real Harness or OpenCode configuration:
+## Development and checks
 
-```bash
-node --test tests/portable-installers.mjs tests/english-localization.mjs tests/keyboard-regression.mjs
+Use Node.js 20 or newer. The workspace test commands require no additional npm dependencies:
+
+```sh
+npm test
+npm run knowledge:check
+npm run knowledge:normalize
 ```
+
+These checks validate English localization, keyboard behavior, installer fixtures, knowledge metadata and runtime behavior, and documentation links. They do not execute PoCs or make model requests. The optional native OpenCode discovery test is opt-in; the default installer checks use isolated temporary directories and fake DSH commands.
+
+`npm run knowledge:enrich` explicitly contacts CISA and FIRST and reports available metadata changes without writing files. Consult the [maintenance guide](plugin/knowledge/CONTRIBUTING.md) before applying an update.
+
+Run `npm run test:windows` on Windows for the PowerShell installer tests. CI is configured for Node.js 20 and 22 on Linux, macOS, and Windows; configuration alone does not establish that remote checks have passed. Manual browser fixtures are documented in the [verification guide](docs/installation.md#verification) and are excluded from `npm test`.
 
 ## Screenshots
 
-These original screenshots have been cropped to the settings dialog and their visible labels localized into English. They are edited documentation images, not new runtime verification captures.
+[View the four-panel Harness gallery](docs/screenshots/README.md). The original screenshots were cropped and localized into English; they are edited documentation images, not new runtime captures. OpenCode does not include these Harness panels.
 
-### Custom prompt
+<details>
+<summary>Preview: custom prompt settings</summary>
 
-![Custom prompt](./docs/screenshots/01-custom-prompt.png)
+![Custom prompt settings in the Harness plugin](docs/screenshots/01-custom-prompt.png)
 
-### Skill library
+</details>
 
-![Skill library](./docs/screenshots/02-skills.png)
+## License and responsible use
 
-### Knowledge base
-
-![Knowledge base](./docs/screenshots/03-knowledge.png)
-
-### Pentest workflow
-
-![Pentest workflow](./docs/screenshots/04-workflow.png)
+The plugin carries an [MIT license](plugin/LICENSE). On-demand third-party skill libraries retain their own licenses. Use assessment tools only on systems you own or are authorized to test; read the [disclaimer](DISCLAIMER.md) before use. This fork is not an official DeepSeek product and makes no guarantee about model behavior, vulnerability coverage, or testing outcomes.

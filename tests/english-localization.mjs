@@ -4,14 +4,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { createKbIndex } from '../plugin/lib/automation.js';
+import { KNOWLEDGE_CATEGORIES, knowledgeFiles } from '../plugin/lib/knowledge-schema.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const textExtensions = new Set(['.md', '.js', '.mjs', '.json', '.ps1', '.cmd', '.yml', '.yaml', '.txt']);
+const textExtensions = new Set(['.md', '.js', '.mjs', '.json', '.ps1', '.cmd', '.yml', '.yaml', '.txt', '.sh', '.command']);
 const han = /\p{Script=Han}/u;
 
 function filesWithin(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    if (entry.name.startsWith('.') || entry.name === 'node_modules') return [];
+    if (['.git', '.DS_Store', 'node_modules'].includes(entry.name)) return [];
     const filename = path.join(directory, entry.name);
     return entry.isDirectory() ? filesWithin(filename) : [filename];
   });
@@ -19,7 +20,8 @@ function filesWithin(directory) {
 
 const files = filesWithin(root);
 const knowledgeRoot = path.join(root, 'plugin', 'knowledge');
-const knowledgeFiles = filesWithin(knowledgeRoot).filter((filename) => filename.endsWith('.md'));
+const knowledgeDocuments = KNOWLEDGE_CATEGORIES.flatMap((category) => filesWithin(path.join(knowledgeRoot, category)))
+  .filter((filename) => filename.endsWith('.md'));
 
 test('repository text and filenames contain no untranslated Han characters', () => {
   for (const filename of files) {
@@ -32,11 +34,13 @@ test('repository text and filenames contain no untranslated Han characters', () 
 
 test('all knowledge entries remain indexed with complete frontmatter', () => {
   const entries = createKbIndex(knowledgeRoot).list();
-  const entryFiles = knowledgeFiles.filter((filename) => path.basename(filename) !== 'SKILL.md');
+  const entryFiles = knowledgeFiles(knowledgeRoot);
   assert.equal(entries.length, entryFiles.length);
   for (const entry of entries) {
     assert.notEqual(entry.title, entry.file, `Missing title: ${entry.file}`);
-    assert.ok(entry.cve, `Missing CVE classification: ${entry.file}`);
+    assert.ok(entry.kind, `Missing entry classification: ${entry.file}`);
+    if (entry.kind === 'cve') assert.match(entry.cve, /^CVE-\d{4}-\d{4,}$/);
+    else assert.equal(entry.cve, null);
     assert.ok(entry.product, `Missing product: ${entry.file}`);
     assert.ok(['critical', 'high', 'medium', 'low', 'info'].includes(entry.severity));
     assert.equal(han.test(JSON.stringify(entry)), false, `Untranslated entry: ${entry.file}`);
@@ -44,7 +48,7 @@ test('all knowledge entries remain indexed with complete frontmatter', () => {
 });
 
 test('knowledge Markdown code fences and category-entry links remain intact', () => {
-  for (const filename of knowledgeFiles) {
+  for (const filename of knowledgeDocuments) {
     const content = readFileSync(filename, 'utf8');
     assert.equal((content.match(/^```/gm) || []).length % 2, 0, `Unclosed fence: ${filename}`);
     if (path.basename(filename) !== 'SKILL.md') continue;

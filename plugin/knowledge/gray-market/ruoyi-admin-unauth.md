@@ -1,17 +1,38 @@
 ---
-title: RuoYi-based admin panels: default passwords / Druid / scheduled-task RCE
-cve: None (deployment flaw + implementation flaw)
-severity: critical
-cvss: 9.0
-product: RuoYi (and customized turnkey gambling/agent admin panels)
-versions: 4.x / 3.x / customized variants
-ports: 80, 443, 8080, 9090
-keywords: ruoyi, RuoYi, druid, admin123, quartz, scheduled tasks, prod-api
+id: "ruoyi-admin-unauth"
+title: "RuoYi-based admin panels: default passwords / Druid / scheduled-task RCE"
+kind: "configuration"
+cve: null
+related-cves: null
+cve-note: "None (deployment flaw + implementation flaw)"
+severity: "critical"
+cvss: 9
+severity-basis: "cvss"
+severity-note: null
+product: "RuoYi (and customized turnkey gambling/agent admin panels)"
+versions: "4.x / 3.x / customized variants"
+ports: "80, 443, 8080, 9090"
+keywords: "ruoyi, RuoYi, druid, admin123, quartz, scheduled tasks, prod-api"
+entry: "RuoYi administration and monitoring web endpoints"
 verified: false
-sources: Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 Frontend: Login-page title/RuoYi copyright, "RuoYi Management System", /prod-api/ prefix in /index
@@ -54,7 +75,9 @@ GET /prod-api/system/user/list?pageNum=1&pageSize=10 HTTP/1.1
 5. After DB access, dump member/order/agent/withdrawal-review tables; use `password` (bcrypt) from `sys_user` for offline cracking.
 6. Cleanup: delete scheduled tasks, generated menus/table records, and uploaded files.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Change default passwords and enforce complexity; remove sample accounts and demo menus.
 - Authenticate `druid` monitoring or disable it (`spring.datasource.druid.stat-view-servlet.enabled=false`).

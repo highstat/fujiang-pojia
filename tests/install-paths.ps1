@@ -1,6 +1,6 @@
 ﻿# Runs without Pester and never invokes a real DSH installation.
 $ErrorActionPreference = 'Stop'
-$installer = Join-Path (Split-Path -Parent $PSScriptRoot) 'install.ps1'
+$installer = Join-Path (Split-Path -Parent $PSScriptRoot) 'scripts\installers\install.ps1'
 $tokens = $null
 $parseErrors = $null
 $ast = [Management.Automation.Language.Parser]::ParseFile($installer, [ref]$tokens, [ref]$parseErrors)
@@ -96,13 +96,15 @@ try {
   # Full flow against a harmless fake CLI and miniature bundle, never the real app.
   $bundle = Join-Path $fixture 'fixture-bundle'
   [void][IO.Directory]::CreateDirectory((Join-Path $bundle 'plugin'))
-  Copy-Item -LiteralPath $installer -Destination (Join-Path $bundle 'install.ps1')
+  $fixtureLaunchers = Join-Path $bundle 'scripts\installers'
+  [void][IO.Directory]::CreateDirectory($fixtureLaunchers)
+  Copy-Item -LiteralPath $installer -Destination (Join-Path $fixtureLaunchers 'install.ps1')
   [IO.File]::WriteAllText((Join-Path $bundle 'plugin\package.json'), '{"name":"test-only-plugin","version":"0.0.0"}')
   $invocationLog = Join-Path $fixture 'cli-arguments.txt'
   $fakeCli = Join-Path $fixture 'fake-dsh.ps1'
   [IO.File]::WriteAllText($fakeCli, ('$args | Set-Content -LiteralPath ''' + $invocationLog.Replace("'", "''") + ''' -Encoding UTF8' + "`r`n" + '$global:LASTEXITCODE = 0'))
   # Bypass the running-app guard only inside the miniature test fixture.
-  $fixtureInstaller = Join-Path $bundle 'install.ps1'
+  $fixtureInstaller = Join-Path $fixtureLaunchers 'install.ps1'
   $fixtureText = [IO.File]::ReadAllText($fixtureInstaller)
   $fixtureAst = [Management.Automation.Language.Parser]::ParseInput($fixtureText, [ref]$null, [ref]$null)
   $processFunction = $fixtureAst.Find({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Get-HarnessProcesses' }, $true)

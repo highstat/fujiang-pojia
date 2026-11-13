@@ -1,18 +1,38 @@
 ---
-title: Balance concurrency and negative values (race conditions / amount signs)
-cve: None (business logic)
-severity: critical
-cvss: 9.0
-product: Custom wallet and betting endpoints
-versions: Any
-ports: 80, 443
-keywords: race, race condition, concurrent withdrawals, negative values, amount validation, idempotency
-entry: 20 concurrent copies of the same request / amount=-100
+id: "race-condition-balance"
+title: "Balance concurrency and negative values (race conditions / amount signs)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
+cvss: 9
+severity-basis: "cvss"
+severity-note: null
+product: "Custom wallet and betting endpoints"
+versions: "Any"
+ports: "80, 443"
+keywords: "race, race condition, concurrent withdrawals, negative values, amount validation, idempotency"
+entry: "20 concurrent copies of the same request / amount=-100"
 verified: false
-sources: Compiled from public sources (business logic flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - Withdrawal/betting/exchange/credit-transfer endpoints lack idempotency keys (no `requestId`/`nonce`), and balances use "read-then-write" updates.
 - The frontend supplies the amount parameter: `{"amount":100}`; the server checks only "is the balance sufficient?"
@@ -49,7 +69,9 @@ seq 20 | xargs -P 20 -I{} curl -s -o /dev/null -X POST https://target/api/withdr
 5. "Missing idempotency" can also be confirmed without moving funds: submit the same `requestId` twice; two 2xx responses each creating a record confirm it.
 6. Evidence: B0/B1, n0/n1, request timestamps; test order numbers and voiding results.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Idempotency keys (unique `requestId` index) + distributed locks.
 - Use DB transactions with `SELECT ... FOR UPDATE` or optimistic locking via `version` for balance operations; deduct funds and create orders in the same transaction.

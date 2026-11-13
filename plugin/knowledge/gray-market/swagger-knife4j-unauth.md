@@ -1,18 +1,38 @@
 ﻿---
-title: Exposed Swagger / Knife4j API documentation → direct calls to unauthenticated endpoints
-cve: None (configuration flaw)
-severity: high
+id: "swagger-knife4j-unauth"
+title: "Exposed Swagger / Knife4j API documentation → direct calls to unauthenticated endpoints"
+kind: "configuration"
+cve: null
+related-cves: null
+cve-note: "None (configuration flaw)"
+severity: "high"
 cvss: 8.3
-product: Spring Boot ecosystem (swagger2/3, knife4j, springdoc)
-versions: Any
-ports: 80, 443, 8080
-keywords: swagger, knife4j, springdoc, documentation, unauthenticated access, api
-entry: /v2/api-docs  /doc.html  /swagger-ui/index.html
+severity-basis: "cvss"
+severity-note: null
+product: "Spring Boot ecosystem (swagger2/3, knife4j, springdoc)"
+versions: "Any"
+ports: "80, 443, 8080"
+keywords: "swagger, knife4j, springdoc, documentation, unauthenticated access, api"
+entry: "/v2/api-docs  /doc.html  /swagger-ui/index.html"
 verified: false
-sources: Compiled from public sources (configuration flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (configuration flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 GET /v2/api-docs            → 200 JSON

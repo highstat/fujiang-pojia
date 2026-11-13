@@ -1,17 +1,38 @@
 ---
-title: JWT implementation flaws (alg:none / weak keys / predictability / kid injection)
-cve: None (implementation flaw)
-severity: high
+id: "jwt-none-and-weak-key"
+title: "JWT implementation flaws (alg:none / weak keys / predictability / kid injection)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "high"
 cvss: 8.1
-product: Custom Web/App backend (JJWT, java-jwt, PyJWT, etc.)
-versions: Any
-ports: 80, 443
-keywords: jwt, alg none, hmac, hashcat 16500, kid, broken access control, privilege escalation
+severity-basis: "cvss"
+severity-note: null
+product: "Custom Web/App backend (JJWT, java-jwt, PyJWT, etc.)"
+versions: "Any"
+ports: "80, 443"
+keywords: "jwt, alg none, hmac, hashcat 16500, kid, broken access control, privilege escalation"
+entry: "JWT authentication and signing-key validation"
 verified: false
-sources: Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references at the end)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references at the end)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - Request header `Authorization: Bearer eyJ...`, or Cookie `token=`;
 - Decoding the payload reveals values such as `{"alg":"HS256","uid":123,"role":"user"}`.
@@ -48,7 +69,9 @@ hashcat -m 16500 jwt.txt /usr/share/wordlists/rockyou.txt
 4. If the server validates only the signature, not expiration (`exp`), old tokens can be reused long-term.
 5. Evidence: original token (the final segment may be redacted) + response after forgery.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Use strongly random keys (≥32 bytes) and rotate regularly; prefer RS256/ES256 with a fixed public key.
 - Enforce an `alg` allowlist (reject `none`) and validate `exp`/`iat`/`aud`/`iss` server-side.

@@ -1,18 +1,38 @@
 ﻿---
-title: Unauthorized withdrawal bank-card replacement (redirect others' withdrawals to your own card)
-cve: None (business logic)
-severity: critical
+id: "withdraw-bankcard-swap"
+title: "Unauthorized withdrawal bank-card replacement (redirect others' withdrawals to your own card)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
 cvss: 9.3
-product: Custom withdrawal modules (turnkey gambling platforms)
-versions: Any
-ports: 80, 443
-keywords: withdrawal, bank card, authorization bypass, replacement, funds, withdraw
-entry: bankId / cardNo / memberId in /api/withdraw/apply
+severity-basis: "cvss"
+severity-note: null
+product: "Custom withdrawal modules (turnkey gambling platforms)"
+versions: "Any"
+ports: "80, 443"
+keywords: "withdrawal, bank card, authorization bypass, replacement, funds, withdraw"
+entry: "bankId / cardNo / memberId in /api/withdraw/apply"
 verified: false
-sources: Compiled from public sources (business logic flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 POST /api/withdraw/apply  {"amount":100,"bankId":12}

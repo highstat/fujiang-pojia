@@ -1,18 +1,38 @@
 ﻿---
-title: Stored XSS in member profiles targeting admin review (administrator session hijacking)
-cve: None (implementation flaw)
-severity: high
+id: "stored-xss-to-admin"
+title: "Stored XSS in member profiles targeting admin review (administrator session hijacking)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "high"
 cvss: 8.2
-product: Custom admin panels (support/review/risk-control pages)
-versions: Any
-ports: 80, 443
-keywords: stored xss, stored, admin panel, review, cookie, csrf
-entry: Insert <img onerror> into nicknames/notes/tickets
+severity-basis: "cvss"
+severity-note: null
+product: "Custom admin panels (support/review/risk-control pages)"
+versions: "Any"
+ports: "80, 443"
+keywords: "stored xss, stored, admin panel, review, cookie, csrf"
+entry: "Insert <img onerror> into nicknames/notes/tickets"
 verified: false
-sources: Compiled from public sources (implementation flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (implementation flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - Member-controlled fields appear in admin lists/details: nickname, real name, notes, ticket content, deposit-receipt filename, agent promotional text.
 - Admin pages have no CSP, or their CSP allows inline scripts.

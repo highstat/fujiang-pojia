@@ -23,11 +23,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { KNOWLEDGE_CATEGORIES, KNOWLEDGE_VERSION, parseKnowledgeDocument } from './knowledge-schema.js';
 
 const OWNER = 'dsh-prompt-custom:skill-library:v1';
 const MARKER = '.fujiang-owner.json';
 const PROVIDER = 'fujiang-knowledge';
-const VERSION = '1.3.1'
+const VERSION = KNOWLEDGE_VERSION;
 
 /** Same directory ownership marker as skills.js / aboutsecurity.js (same root and owner). */
 const CATALOG = Object.freeze({
@@ -41,17 +42,7 @@ const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_CORPUS = path.join(moduleDir, '..', 'knowledge');
 
 /** Category directory → skill name; names must use lowercase and hyphens (core skill-name constraint). */
-const CATEGORIES = Object.freeze([
-  { dir: 'java-deser', fallback: 'kb-java-deser' },
-  { dir: 'java-web', fallback: 'kb-java-web' },
-  { dir: 'edge-device', fallback: 'kb-edge-device' },
-  { dir: 'exchange-ad', fallback: 'kb-exchange-ad' },
-  { dir: 'web-cms', fallback: 'kb-web-cms' },
-  { dir: 'linux-priv', fallback: 'kb-linux-priv' },
-  { dir: 'cloud-container', fallback: 'kb-cloud-container' },
-  { dir: 'gray-market', fallback: 'kb-gray-market' },
-  { dir: 'triage', fallback: 'kb-triage' },
-]);
+const CATEGORIES = Object.freeze(KNOWLEDGE_CATEGORIES.map((dir) => ({ dir, fallback: 'kb-' + dir })));
 
 const messageOf = (error) => String(error?.message || error).slice(0, 1600);
 const isInside = (base, file) => {
@@ -66,30 +57,8 @@ function writeJson(file, value) {
   fs.renameSync(temp, file);
 }
 
-/** Parse only flat key: value frontmatter enclosed in `---`; do not interpret values as YAML. */
-const FRONTMATTER = /^(?:\uFEFF)?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
-
-function unquote(value) {
-  const text = value.trim();
-  if (text.startsWith('"') && text.endsWith('"') && text.length > 1) {
-    try { return JSON.parse(text); } catch { return text.slice(1, -1); }
-  }
-  if (text.startsWith("'") && text.endsWith("'") && text.length > 1) return text.slice(1, -1);
-  return text;
-}
-
 function parseFrontmatter(markdown) {
-  const match = FRONTMATTER.exec(markdown);
-  if (!match) return { fields: {}, body: markdown };
-  const fields = {};
-  for (const line of match[1].split(/\r?\n/)) {
-    const split = line.indexOf(':');
-    if (split <= 0) continue;
-    const key = line.slice(0, split).trim();
-    if (!/^[a-z][a-z0-9-]*$/.test(key)) continue;
-    fields[key] = unquote(line.slice(split + 1));
-  }
-  return { fields, body: markdown.slice(match[0].length) };
+  return parseKnowledgeDocument(markdown);
 }
 
 export function createKnowledgeLibrary(ctx, options = {}) {
@@ -108,7 +77,6 @@ export function createKnowledgeLibrary(ctx, options = {}) {
   let providerDispose = null;
   let runtimeCtx = null;
   let restored = false;
-  let cache = null;
 
   function assertOwned(dir) {
     if (!isInside(home, dir)) throw new Error('The skill directory is outside the area managed by this plugin.');
@@ -146,7 +114,6 @@ export function createKnowledgeLibrary(ctx, options = {}) {
   }
 
   function categories() {
-    if (cache) return cache;
     const list = [];
     for (const spec of CATEGORIES) {
       try { list.push(readCategory(spec)); }
@@ -154,11 +121,8 @@ export function createKnowledgeLibrary(ctx, options = {}) {
         if (fs.existsSync(path.join(corpus, spec.dir))) error = messageOf(cause);
       }
     }
-    cache = list;
-    return cache;
+    return list;
   }
-
-  const entryCount = () => categories().reduce((total, item) => total + item.entries.length, 0);
 
   /** Settings category catalog: category titles + per-item title/severity/entry (read only from frontmatter). */
   const catalog = () => categories().map((item) => {
@@ -179,7 +143,7 @@ export function createKnowledgeLibrary(ctx, options = {}) {
   const snapshot = () => {
     let skillCount = 0;
     let entries = 0;
-    try { skillCount = categories().length; entries = entryCount(); }
+    try { const list = categories(); skillCount = list.length; entries = list.reduce((total, item) => total + item.entries.length, 0); }
     catch (cause) { error = messageOf(cause); }
     return {
       ok: true,
@@ -204,7 +168,7 @@ export function createKnowledgeLibrary(ctx, options = {}) {
   function deactivate() {
     active = false;
     if (providerDispose) { const dispose = providerDispose; providerDispose = null; dispose(); }
-    phase = state.enabled ? 'disabled' : 'disabled';
+    phase = 'disabled';
   }
 
   /** Register a read-only provider: list() supplies the catalog; get() reads bodies fresh, making content edits visible immediately. */
@@ -212,13 +176,12 @@ export function createKnowledgeLibrary(ctx, options = {}) {
     if (active) return;
     if (closed) throw new Error('The plugin has stopped. Restart DSH.');
     if (!runtimeCtx) throw new Error('This DSH instance has not provided the skill service yet. Fully restart the official Desktop app and retry.');
-    cache = null;                       // Each toggle rereads categories and descriptions.
     const list = categories();
     if (!list.length) throw new Error('Knowledge base content is missing. Reinstall the plugin.');
     providerDispose = runtimeCtx.skills.registerProvider(() => ({
       name: PROVIDER,
       async list() {
-        return list.map((item) => ({
+        return categories().map((item) => ({
           name: item.name,
           description: item.description,
           invocation: { modelInvocable: true, userInvocable: true },
@@ -232,7 +195,7 @@ export function createKnowledgeLibrary(ctx, options = {}) {
         }));
       },
       async get(candidate) {
-        const item = candidate?.locator || list.find((entry) => entry.name === candidate?.name);
+        const item = categories().find((entry) => entry.name === candidate?.name);
         if (!item) throw new Error('This knowledge base entry is no longer valid. Toggle the knowledge base off and on again.');
         const markdown = fs.readFileSync(item.file, 'utf8');
         const { body } = parseFrontmatter(markdown);
@@ -329,5 +292,5 @@ export function createKnowledgeLibrary(ctx, options = {}) {
   }, 'fujiang-knowledge: manager cleanup');
 
   const listForTest = async () => categories();
-  return { listForTest, snapshot, action, catalog, ready, settled: async () => { await ready; }, resetCache: () => { cache = null; } };
+  return { listForTest, snapshot, action, catalog, ready, settled: async () => { await ready; }, resetCache: () => {} };
 }

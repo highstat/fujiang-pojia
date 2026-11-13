@@ -1,24 +1,44 @@
 ﻿---
-title: Authorization bypass in admin "switch user/impersonation" endpoints (arbitrary account takeover)
-cve: None (business logic)
-severity: critical
+id: "impersonate-switch-user"
+title: "Authorization bypass in admin \"switch user/impersonation\" endpoints (arbitrary account takeover)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
 cvss: 9.1
-product: Custom support/agent backend
-versions: Any
-ports: 80, 443
-keywords: impersonate, switch, impersonation, support, broken access control, takeover
-entry: /api/admin/user/loginAs?uid=1
+severity-basis: "cvss"
+severity-note: null
+product: "Custom support/agent backend"
+versions: "Any"
+ports: "80, 443"
+keywords: "impersonate, switch, impersonation, support, broken access control, takeover"
+entry: "/api/admin/user/loginAs?uid=1"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - Backends commonly have "log in as this user"/"act on behalf of customer" buttons, corresponding to these endpoints:
 
 ```
-/api/admin/user/loginAs?uid=       /api/admin/member/switch?memberId=
-/api/cs/impersonate                /api/agent/loginAs?uid=
+/api/admin/user/loginAs?uid= /api/admin/member/switch?memberId=
+/api/cs/impersonate /api/agent/loginAs?uid=
 ```
 
 ## Prerequisites
@@ -55,4 +75,4 @@ curl -s https://target/api/user/info -H "Authorization: Bearer <returned token>"
 
 ## References
 
-- OWASP API Security Top 10：API5 BFLA。
+- OWASP API Security Top 10: API5 BFLA.

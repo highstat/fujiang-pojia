@@ -1,18 +1,38 @@
 ﻿---
-title: Unauthorized support-ticket attachment downloads (identity photos / KYC documents)
-cve: None (business logic)
-severity: high
+id: "support-ticket-attachment-idor"
+title: "Unauthorized support-ticket attachment downloads (identity photos / KYC documents)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "high"
 cvss: 8.2
-product: Custom support-ticket system
-versions: Any
-ports: 80, 443
-keywords: ticket, attachment, authorization bypass, identity documents, kyc, download
-entry: /api/support/attachment?fileId=
+severity-basis: "cvss"
+severity-note: null
+product: "Custom support-ticket system"
+versions: "Any"
+ports: "80, 443"
+keywords: "ticket, attachment, authorization bypass, identity documents, kyc, download"
+entry: "/api/support/attachment?fileId="
 verified: false
-sources: Compiled from public sources (business logic flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 GET /api/support/ticket/{id}

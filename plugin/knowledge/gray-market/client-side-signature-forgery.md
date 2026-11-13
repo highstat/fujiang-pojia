@@ -1,18 +1,38 @@
 ---
-title: Reversible frontend signing / encryption (forge requests to bypass risk controls)
-cve: None (implementation flaw)
-severity: high
+id: "client-side-signature-forgery"
+title: "Reversible frontend signing / encryption (forge requests to bypass risk controls)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "high"
 cvss: 8.1
-product: Custom H5 / App endpoints (custom sign, AES request bodies)
-versions: Any
-ports: 80, 443
-keywords: sign, hmac, aes, frontend encryption, reversible, nonce, timestamp, risk controls
-entry: Extract the algorithm and key from app.js and recalculate sign
+severity-basis: "cvss"
+severity-note: null
+product: "Custom H5 / App endpoints (custom sign, AES request bodies)"
+versions: "Any"
+ports: "80, 443"
+keywords: "sign, hmac, aes, frontend encryption, reversible, nonce, timestamp, risk controls"
+entry: "Extract the algorithm and key from app.js and recalculate sign"
 verified: false
-sources: Compiled from public sources (implementation flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (implementation flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - Request headers include `X-Sign`, `X-Timestamp`, `X-Nonce`, and `X-Device`; the body is `data=<base64>` or AES ciphertext.
 - The frontend bundle contains `md5(secret + ...)`, `CryptoJS.AES.encrypt`, and hard-coded `key`/`iv` values.
@@ -59,7 +79,9 @@ PY
 4. If ciphertext is reversible (AES with fixed key/iv, ECB), decrypt it to understand the fields, then construct arbitrary plaintext.
 5. Confirmation requires both a **valid signature + unauthorized result** to establish "forgeability"; recalculation without unauthorized access is only a reverse-engineering observation, not a vulnerability.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Keep critical logic server-side; the frontend is for presentation, not a trust boundary.
 - If signing is required: have the server issue a short-lived token for the key + HMAC + nonce replay prevention (store nonce TTL server-side).

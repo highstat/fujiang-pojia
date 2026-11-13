@@ -1,18 +1,38 @@
 ﻿---
-title: Unlimited promotion / bonus / rebate claims (missing idempotency)
-cve: None (business logic)
-severity: high
+id: "promotion-abuse"
+title: "Unlimited promotion / bonus / rebate claims (missing idempotency)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "high"
 cvss: 7.9
-product: Promotion and reward endpoints
-versions: Any
-ports: 80, 443
-keywords: promotion, bonus, bonus funds, rebate, idempotency, concurrent claims, promotion abuse
-entry: Repeated or concurrent claims through /api/promotion/receive
+severity-basis: "cvss"
+severity-note: null
+product: "Promotion and reward endpoints"
+versions: "Any"
+ports: "80, 443"
+keywords: "promotion, bonus, bonus funds, rebate, idempotency, concurrent claims, promotion abuse"
+entry: "Repeated or concurrent claims through /api/promotion/receive"
 verified: false
-sources: Compiled from public sources (business logic flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 /api/promotion/receive     /api/bonus/claim
@@ -49,7 +69,9 @@ curl -s -X POST https://target/api/promotion/receive \
 4. Chain: bonus credited → place a bet → follow the withdrawal chain (`withdraw-approval-idor.md`) to check withdrawability.
 5. Evidence: before/after balances + record counts; use only your own accounts.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Idempotent claims: unique `(user_id, promotion_id)` index; use locks or `INSERT ... ON DUPLICATE` for concurrency.
 - Calculate reward amounts and tiers server-side; do not accept client-supplied values.

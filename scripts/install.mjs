@@ -3,14 +3,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { parseKnowledgeDocument } from '../plugin/lib/knowledge-schema.js';
+import { effectivePrompt } from '../plugin/lib/tool-integrations.js';
+import { openCodeToolEntry } from './tool-config.mjs';
 
 const bundleRoot = fileURLToPath(new URL('../', import.meta.url));
 const valueOptions = new Set(['--profile', '--dsh-command', '--dsh-home', '--project', '--config-dir', '--model']);
 const help = `Usage:
   node scripts/install.mjs harness [--profile desktop] [--dsh-command PATH] [--dsh-home PATH] [--dry-run]
-  node scripts/install.mjs opencode [--project PATH | --config-dir PATH] [--model PROVIDER/MODEL] [--dry-run]
+  node scripts/install.mjs opencode [--project PATH | --config-dir PATH] [--model PROVIDER/MODEL] [--with-tools] [--dry-run]
 
-Harness: macOS/Linux; use run-installer.cmd or install.ps1 on Windows.
+Harness: macOS/Linux; use scripts/installers/run-installer.cmd or install.ps1 in that directory on Windows.
 OpenCode: all platforms; installs an agent and offline knowledge skills, not the Harness UI.
 Requires Node.js 20 or newer. No credentials, default agents, or permissions are changed.
 `;
@@ -23,6 +26,7 @@ export function parseOptions(arguments_) {
     const flag = remaining.shift();
     if (flag === '--help' || flag === '-h') return { help: true };
     if (flag === '--dry-run') { options.dryRun = true; continue; }
+    if (flag === '--with-tools') { options.withTools = true; continue; }
     if (!valueOptions.has(flag)) throw new Error('Unknown option: ' + flag);
     const value = remaining.shift();
     if (!value || value.startsWith('--')) throw new Error('Missing value for ' + flag);
@@ -34,7 +38,7 @@ export function parseOptions(arguments_) {
   if (options.model && !/^[A-Za-z0-9._-]+\/[^\s\x00-\x1f]+$/.test(options.model)) {
     throw new Error('Model must use provider/model format, without whitespace.');
   }
-  const unavailable = options.target === 'harness' ? ['project', 'configDir', 'model'] : ['dshCommand', 'dshHome'];
+  const unavailable = options.target === 'harness' ? ['project', 'configDir', 'model', 'withTools'] : ['dshCommand', 'dshHome'];
   if (unavailable.some((key) => options[key]) || (options.target === 'opencode' && options.profile !== 'desktop')) {
     throw new Error('An option belongs to the other installation target.');
   }
@@ -161,7 +165,7 @@ function harnessProcesses() {
 }
 
 export function installHarness(options, log = console.log) {
-  if (!['darwin', 'linux'].includes(process.platform)) throw new Error('Use install.ps1 or run-installer.cmd for Harness on Windows.');
+  if (!['darwin', 'linux'].includes(process.platform)) throw new Error('Use scripts/installers/install.ps1 or run-installer.cmd in that directory for Harness on Windows.');
   const root = path.resolve(options.dshHome || process.env.DSH_HOME?.trim() || path.join(os.homedir(), '.dsh'));
   const command = resolveDsh(options.dshCommand);
   const profile = options.profile || 'desktop';
@@ -200,7 +204,7 @@ export function installOpenCode(options, log = console.log) {
   if (options.model) metadata.push('model: ' + JSON.stringify(options.model));
   const entries = [{
     destination: path.join(root, 'agents/fujiang.md'),
-    content: metadata.join('\n') + '\n---\n\n' + configuration.text,
+    content: metadata.join('\n') + '\n---\n\n' + effectivePrompt(configuration.text),
   }];
   const knowledge = path.join(bundleRoot, 'plugin/knowledge');
   const skillNames = new Set();
@@ -209,19 +213,26 @@ export function installOpenCode(options, log = console.log) {
     const source = path.join(knowledge, category.name);
     validateSource(source);
     const skill = fs.readFileSync(path.join(source, 'SKILL.md'), 'utf8');
-    const name = /^name:\s*(kb-[a-z0-9]+(?:-[a-z0-9]+)*)\s*$/m.exec(skill)?.[1];
-    if (!name || skillNames.has(name)) throw new Error('Invalid or duplicate knowledge skill name: ' + category.name);
+    const name = parseKnowledgeDocument(skill).fields.name;
+    if (typeof name !== 'string' || !/^kb-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)
+      || skillNames.has(name)) throw new Error('Invalid or duplicate knowledge skill name: ' + category.name);
     skillNames.add(name);
     entries.push({ source, destination: path.join(root, 'skills', name) });
   }
   if (!skillNames.size) throw new Error('No knowledge skills found.');
+  if (options.withTools) {
+    guardDestination(root, path.join(root, 'opencode.json'));
+    entries.push(openCodeToolEntry(root));
+  }
   for (const entry of entries) { guardDestination(root, entry.destination); log('Install: ' + entry.destination); }
-  log('Prompt text is copied exactly; cards, enablement, and Harness injection modes are not imported.');
+  log('Source prompt is preserved and an additive Context7/REA tool-use section is appended; cards and Harness injection modes are not imported.');
+  if (options.withTools) log('Register Context7 remote MCP and REA 6.9.0 local MCP. Starting OpenCode may download REA via npx; Node.js must satisfy REA runtime requirements.');
   if (options.dryRun) { log('Dry run; no files changed.'); return; }
   applyPlan(root, entries, undefined, log);
   log('OpenCode adapter installed: agent fujiang and ' + skillNames.size + ' knowledge skills.');
   log('Connect DeepSeek in OpenCode using /connect, then select fujiang and your DeepSeek model.');
-  log('No API keys, permissions, default agents, or opencode.json/jsonc files were changed.');
+  log(options.withTools ? 'MCP servers registered in opencode.json; no secret values, permissions, or defaults were written.'
+    : 'No API keys, permissions, default agents, or opencode.json/jsonc files were changed. Use --with-tools to register MCP servers.');
   log('Harness UI, campaign tools, and automatic continuation are not available in this adapter.');
 }
 

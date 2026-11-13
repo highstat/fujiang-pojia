@@ -1,18 +1,38 @@
 ﻿---
-title: Controllable payment / callback URL → internal SSRF (including cloud metadata)
-cve: None (business logic)
-severity: high
+id: "callback-url-ssrf"
+title: "Controllable payment / callback URL → internal SSRF (including cloud metadata)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "high"
 cvss: 8.5
-product: Custom payment and notification modules
-versions: Any
-ports: 80, 443
-keywords: callback, payment, ssrf, internal network, metadata, notify
-entry: Payment configuration/callback URL/agent promotional-link checks
+severity-basis: "cvss"
+severity-note: null
+product: "Custom payment and notification modules"
+versions: "Any"
+ports: "80, 443"
+keywords: "callback, payment, ssrf, internal network, metadata, notify"
+entry: "Payment configuration/callback URL/agent promotional-link checks"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 POST /api/pay/config      {"notifyUrl":"http://..."}

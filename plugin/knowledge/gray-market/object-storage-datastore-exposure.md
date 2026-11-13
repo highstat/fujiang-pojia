@@ -1,17 +1,38 @@
 ---
-title: Exposed object storage and data stores (OSS / S3 / MinIO / MySQL / MongoDB)
-cve: None (configuration flaw)
-severity: high
+id: "object-storage-datastore-exposure"
+title: "Exposed object storage and data stores (OSS / S3 / MinIO / MySQL / MongoDB)"
+kind: "configuration"
+cve: null
+related-cves: null
+cve-note: "None (configuration flaw)"
+severity: "high"
 cvss: 8.6
-product: Alibaba Cloud OSS / Tencent Cloud COS / AWS S3 / MinIO / MySQL / MongoDB
-versions: Any
-ports: 80, 443, 9000, 3306, 27017
-keywords: oss, s3, bucket, minio, mongodb, mysql, weak passwords, enumeration, kyc
+severity-basis: "cvss"
+severity-note: null
+product: "Alibaba Cloud OSS / Tencent Cloud COS / AWS S3 / MinIO / MySQL / MongoDB"
+versions: "Any"
+ports: "80, 443, 9000, 3306, 27017"
+keywords: "oss, s3, bucket, minio, mongodb, mysql, weak passwords, enumeration, kyc"
+entry: "Public object storage or exposed datastore services"
 verified: false
-sources: Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic / implementation / configuration flaws; no CVE; see references below)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - Resource URLs: `*.oss-cn-*.aliyuncs.com`, `*.cos.ap-*.myqcloud.com`, `*.s3.*.amazonaws.com`, `:9000` (MinIO console), `:27017`, `:3306`.
 - `ossUrl`, `bucketName`, `Expires`, and `OSSAccessKeyId` in frontend JS / `config.js` / download links.
@@ -51,7 +72,9 @@ mysql -h target -uroot -p'root' -e 'select version(); show databases;'
 4. After accessing the DB, first inspect permissions: MySQL `show grants`, Mongo `db.getUser()`; if writes are possible, create a read-only account for long-term observation without changing application data.
 5. Evidence: one object name + ETag/size + one `select` result; describe data categories and estimated volume in the report (do not include identity-document images).
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Keep all buckets private + use short-lived presigned URLs; disable anonymous List/Put; enable access logs and anomaly alerts.
 - Change MinIO default passwords and restrict it to internal access; separate console and API ports.

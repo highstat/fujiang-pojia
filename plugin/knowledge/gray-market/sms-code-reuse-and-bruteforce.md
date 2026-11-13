@@ -1,18 +1,38 @@
 ﻿---
-title: SMS verification-code disclosure / reuse / brute force (arbitrary account takeover)
-cve: None (business logic)
-severity: critical
+id: "sms-code-reuse-and-bruteforce"
+title: "SMS verification-code disclosure / reuse / brute force (arbitrary account takeover)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
 cvss: 9.1
-product: Custom registration/login/password-change endpoints
-versions: Any
-ports: 80, 443
-keywords: sms, code, verification-code disclosure, reuse, brute force, takeover
-entry: Code in response / same-code reuse / four-digit brute force
+severity-basis: "cvss"
+severity-note: null
+product: "Custom registration/login/password-change endpoints"
+versions: "Any"
+ports: "80, 443"
+keywords: "sms, code, verification-code disclosure, reuse, brute force, takeover"
+entry: "Code in response / same-code reuse / four-digit brute force"
 verified: false
-sources: Compiled from public sources (business logic flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 /api/sms/send      /api/user/register      /api/user/findpwd

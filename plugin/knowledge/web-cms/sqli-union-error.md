@@ -1,15 +1,35 @@
 ﻿---
-title: General SQL injection techniques (error-based / UNION / stacked queries)
-cve: None (implementation flaw)
-severity: critical
+id: "sqli-union-error"
+title: "General SQL injection techniques (error-based / UNION / stacked queries)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "critical"
 cvss: 9.1
-product: Any endpoint that uses SQL queries
-versions: Any
-ports: 80, 443
-keywords: sqli, sql injection, union, error-based, stacked queries, sqlmap
-entry: Numeric/string parameters
+severity-basis: "cvss"
+severity-note: null
+product: "Any endpoint that uses SQL queries"
+versions: "Any"
+ports: "80, 443"
+keywords: "sqli, sql injection, union, error-based, stacked queries, sqlmap"
+entry: "Numeric/string parameters"
 verified: false
-sources: Compiled from public sources (implementation flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (implementation flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
 ## Fingerprinting

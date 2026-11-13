@@ -1,18 +1,38 @@
 ---
-title: Third-party game / live-casino API key disclosure and callback forgery
-cve: None (implementation flaw)
-severity: critical
+id: "game-vendor-api-forgery"
+title: "Third-party game / live-casino API key disclosure and callback forgery"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "critical"
 cvss: 8.8
-product: Turnkey sites integrating AG / BBIN / OB and other vendors
-versions: Any
-ports: 80, 443
-keywords: game vendor, api key, live casino, crediting, callback, transfer
-entry: Obtain vendor key from the frontend and forge /api/game/callback to credit funds
+severity-basis: "editorial"
+severity-note: "Legacy editorial severity retained; the stored CVSS score maps to high. No vendor classification or laboratory verification is implied."
+product: "Turnkey sites integrating AG / BBIN / OB and other vendors"
+versions: "Any"
+ports: "80, 443"
+keywords: "game vendor, api key, live casino, crediting, callback, transfer"
+entry: "Obtain vendor key from the frontend and forge /api/game/callback to credit funds"
 verified: false
-sources: Compiled from public sources (implementation flaws; no CVE; use each vendor's integration documentation for fields/algorithms)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (implementation flaws; no CVE; use each vendor's integration documentation for fields/algorithms)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 /api/game/balance?platform=AG     /api/game/transfer
@@ -60,7 +80,9 @@ account=<your-account>&amount=1000&orderNo=TEST123&sign=whatever
 5. Chain: credit via `callback` → place a bet → use `withdraw-approval-idor.md` to verify financial impact; quantify using "state change + balance change both confirmed" and "upper bound = per-transaction amount × replay count" from `payment-notify-forgery.md`.
 6. Evidence: request + before/after balances; use only your own account; void test orders.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Store vendor key/secret only server-side, never in frontend bundles; H5 receives only temporary tokens.
 - Require callback signature verification (per vendor documentation) + source IP allowlisting + idempotency (unique orderNo).

@@ -1,18 +1,38 @@
 ﻿---
-title: Unauthenticated admin API (menus hidden only in the frontend)
-cve: None (business logic)
-severity: critical
+id: "admin-api-unauthenticated"
+title: "Unauthenticated admin API (menus hidden only in the frontend)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
 cvss: 9.1
-product: Custom turnkey platform / agent backend
-versions: Any
-ports: 80, 443
-keywords: admin api, unauthenticated, broken access control, frontend hiding, menus
-entry: Access /api/admin/* directly with a regular token
+severity-basis: "cvss"
+severity-note: null
+product: "Custom turnkey platform / agent backend"
+versions: "Any"
+ports: "80, 443"
+keywords: "admin api, unauthenticated, broken access control, frontend hiding, menus"
+entry: "Access /api/admin/* directly with a regular token"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 - The frontend bundle contains `/api/admin/...`, `/prod-api/admin/...`, and `/manage/...` paths (`grep -o '/api/admin/[a-zA-Z0-9_/-]*' app.js`).
 - Responses for regular accounts contain fields such as `isAdmin`/`menus`.
@@ -48,4 +68,4 @@ curl -s -X POST https://target/api/admin/user/resetPassword -H "Authorization: B
 
 ## References
 
-- OWASP API Security Top 10：API5 BFLA。
+- OWASP API Security Top 10: API5 BFLA.

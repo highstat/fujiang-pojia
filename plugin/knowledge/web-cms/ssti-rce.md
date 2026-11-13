@@ -1,15 +1,35 @@
 ﻿---
-title: SSTI template injection → RCE (Jinja2 / Twig / Freemarker)
-cve: None (implementation flaw)
-severity: critical
-cvss: 9.0
-product: Template engines (Python/Java/PHP server-side rendering)
-versions: Any
-ports: 80, 443
-keywords: ssti, template injection, jinja2, twig, freemarker, rce
-entry: User input concatenated into template strings
+id: "ssti-rce"
+title: "SSTI template injection → RCE (Jinja2 / Twig / Freemarker)"
+kind: "implementation"
+cve: null
+related-cves: null
+cve-note: "None (implementation flaw)"
+severity: "critical"
+cvss: 9
+severity-basis: "cvss"
+severity-note: null
+product: "Template engines (Python/Java/PHP server-side rendering)"
+versions: "Any"
+ports: "80, 443"
+keywords: "ssti, template injection, jinja2, twig, freemarker, rce"
+entry: "User input concatenated into template strings"
 verified: false
-sources: Compiled from public sources (implementation flaws)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (implementation flaws)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
 ## Fingerprinting
@@ -26,7 +46,7 @@ sources: Compiled from public sources (implementation flaws)
 ```bash
 # 1) Probe (try each of the three syntax styles)
 for p in '7*7' '{{7*7}}' '${7*7}' '#{7*7}' '{{7*"7"}}'; do
-  echo "== $p"; curl -s "https://target/greet?name=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$p")" | grep -o '49\|7777777' | head -2
+ echo "== $p"; curl -s "https://target/greet?name=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$p")" | grep -o '49\|7777777' | head -2
 done
 # Output of 49 = the engine evaluates the expression
 ```
@@ -58,4 +78,4 @@ curl -s 'https://target/greet' --get --data-urlencode "name={{7*7}}" | grep -o 4
 
 ## References
 
-- OWASP SSTI；CWE-1336。
+- OWASP SSTI; CWE-1336.

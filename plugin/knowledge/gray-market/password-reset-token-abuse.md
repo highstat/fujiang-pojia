@@ -1,18 +1,38 @@
 ﻿---
-title: Predictable password-reset tokens / tokens not bound to users (arbitrary-user password changes)
-cve: None (business logic)
-severity: critical
+id: "password-reset-token-abuse"
+title: "Predictable password-reset tokens / tokens not bound to users (arbitrary-user password changes)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
 cvss: 9.1
-product: Custom password-recovery workflow
-versions: Any
-ports: 80, 443
-keywords: reset, token, password recovery, arbitrary user, authorization bypass
-entry: token = md5(uid) / token exposed in response / uid not validated
+severity-basis: "cvss"
+severity-note: null
+product: "Custom password-recovery workflow"
+versions: "Any"
+ports: "80, 443"
+keywords: "reset, token, password recovery, arbitrary user, authorization bypass"
+entry: "token = md5(uid) / token exposed in response / uid not validated"
 verified: false
-sources: Compiled from public sources (business logic flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 /api/user/findpwd        /api/user/resetPwd

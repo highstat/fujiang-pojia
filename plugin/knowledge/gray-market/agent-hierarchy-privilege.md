@@ -1,23 +1,43 @@
 ﻿---
-title: Agent hierarchy authorization bypass (read site-wide downlines / change commission rates)
-cve: None (business logic)
-severity: critical
+id: "agent-hierarchy-privilege"
+title: "Agent hierarchy authorization bypass (read site-wide downlines / change commission rates)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
 cvss: 8.8
-product: Turnkey gambling platform / agent distribution system
-versions: Any
-ports: 80, 443
-keywords: agent, agentId, hierarchy authorization bypass, commission, rebates, member list
-entry: Change agentId to read another agent's downline; change rate to raise commission
+severity-basis: "editorial"
+severity-note: "Legacy editorial severity retained; the stored CVSS score maps to high. No vendor classification or laboratory verification is implied."
+product: "Turnkey gambling platform / agent distribution system"
+versions: "Any"
+ports: "80, 443"
+keywords: "agent, agentId, hierarchy authorization bypass, commission, rebates, member list"
+entry: "Change agentId to read another agent's downline; change rate to raise commission"
 verified: false
-sources: Compiled from public sources (business logic; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
-/api/agent/member/list?agentId=10001     /api/agent/sub/list?agentId=
-/api/report/agent/team?agentId=&date=    /api/agent/commission/set
-/api/agent/rebate/config                 /api/agent/invite/bind
+/api/agent/member/list?agentId=10001 /api/agent/sub/list?agentId=
+/api/report/agent/team?agentId=&date= /api/agent/commission/set
+/api/agent/rebate/config /api/agent/invite/bind
 ```
 
 These sites pass the "master agent → agent → member" hierarchy in **request parameters**; the server checks only "is the user logged in?", not "does this tree belong to the user?".
@@ -48,7 +68,9 @@ Content-Type: application/json
 4. Increase commission: read the current rate → change it using your own account (change only your own rate and observe whether it takes effect); changing others' rates is more severe.
 5. Evidence: one request for each of two agentId values + a comparison of record counts; retain only 1-2 records, not an entire table export.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Derive `agentId` from the server session, not the request; enforce a query condition requiring the current user to be in the ancestor chain.
 - Require approval workflows + two-person review + audit logs for commission/rebate rate changes; hard-code rate caps.
@@ -56,4 +78,4 @@ Content-Type: application/json
 
 ## References
 
-- OWASP API Security Top 10：API1 BOLA / API5 BFLA。
+- OWASP API Security Top 10: API1 BOLA / API5 BFLA.

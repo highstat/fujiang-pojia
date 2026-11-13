@@ -1,18 +1,38 @@
 ---
-title: Withdrawal-review endpoint authorization bypass (read others' bank cards / change review status)
-cve: None (business logic)
-severity: critical
+id: "withdraw-approval-idor"
+title: "Withdrawal-review endpoint authorization bypass (read others' bank cards / change review status)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (business logic)"
+severity: "critical"
 cvss: 9.1
-product: Turnkey gambling platforms / money-mule payout processing
-versions: Any
-ports: 80, 443
-keywords: withdrawal, withdraw, review, approve, bank card, authorization bypass
-entry: Choose one of two forms (Query/JSON), based on captured requests
+severity-basis: "cvss"
+severity-note: null
+product: "Turnkey gambling platforms / money-mule payout processing"
+versions: "Any"
+ports: "80, 443"
+keywords: "withdrawal, withdraw, review, approve, bank card, authorization bypass"
+entry: "Choose one of two forms (Query/JSON), based on captured requests"
 verified: false
-sources: Compiled from public sources (business logic flaws; no CVE)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (business logic flaws; no CVE)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 Two common forms appear in captured traffic (**a given site uses only one**; do not apply the Query form to a JSON-based site):
 
@@ -61,7 +81,9 @@ Content-Type: application/json
 5. **Boundary**: self-approval ≠ funds can leave. Actual payout depends on secondary review, payout risk controls, and channel reconciliation—this material does not cover those; mark them "unverified" in the report.
 6. Evidence: one response from A reading B (redacted) + before/after status of A's self-approval; void test orders and record their numbers.
 
-## Remediation and Mitigation (Hardening)
+## Remediation and Mitigation
+
+### Remediation and Mitigation (Hardening)
 
 - Separate management domain for review endpoints + strict role checks (finance role) + two-level approval + idempotency (one status transition per order).
 - Filter lists/details by `uid` with row-level authorization; return only the last four bank-card digits.

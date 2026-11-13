@@ -1,18 +1,38 @@
 ﻿---
-title: Admin scheduled-task / job injection (Quartz, XXL-JOB, RuoYi)
-cve: None (feature abuse)
-severity: critical
+id: "scheduled-task-injection"
+title: "Admin scheduled-task / job injection (Quartz, XXL-JOB, RuoYi)"
+kind: "business-logic"
+cve: null
+related-cves: null
+cve-note: "None (feature abuse)"
+severity: "critical"
 cvss: 9.1
-product: RuoYi/XXL-JOB/Quartz admin panels
-versions: Any
-ports: 80, 443, 8080
-keywords: scheduled tasks, quartz, xxl-job, RuoYi, rce, scheduled jobs
-entry: Writable task execution content / cron expressions
+severity-basis: "cvss"
+severity-note: null
+product: "RuoYi/XXL-JOB/Quartz admin panels"
+versions: "Any"
+ports: "80, 443, 8080"
+keywords: "scheduled tasks, quartz, xxl-job, RuoYi, rce, scheduled jobs"
+entry: "Writable task execution content / cron expressions"
 verified: false
-sources: Compiled from public sources (feature abuse)
+verified-on: null
+verification-evidence: null
+source-url: null
+vendor-advisory: null
+cwe: null
+patch-date: null
+sources: "Compiled from public sources (feature abuse)"
+kev: null
+kev-date: null
+kev-source: null
+epss: null
+epss-percentile: null
+epss-date: null
+epss-source: null
+enrichment-updated: null
 ---
 
-## Fingerprints
+## Fingerprinting
 
 ```
 GET  /monitor/job          → RuoYi scheduled-tasks page
