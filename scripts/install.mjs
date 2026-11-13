@@ -88,6 +88,23 @@ function sameSource(source, destination) {
     });
 }
 
+// Portable recursive copy. fs.cpSync(source, freshPath, { recursive: true }) is unreliable on
+// Windows under newer Node.js releases: it can return without creating the destination directory,
+// so staging a knowledge-skill directory fails with ENOENT on the following stat. Explicit
+// mkdir/readdir/copyFileSync behaves identically on every platform and Node 20/22/24.
+function copyTree(source, destination) {
+  const stat = fs.lstatSync(source);
+  if (stat.isSymbolicLink()) throw new Error('Unsupported source symbolic link: ' + source);
+  if (stat.isDirectory()) {
+    fs.mkdirSync(destination, { recursive: true, mode: 0o700 });
+    for (const name of fs.readdirSync(source)) copyTree(path.join(source, name), path.join(destination, name));
+  } else if (stat.isFile()) {
+    fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o700 });
+    fs.copyFileSync(source, destination);
+    fs.chmodSync(destination, 0o600);
+  } else throw new Error('Unsupported source file: ' + source);
+}
+
 function applyPlan(root, entries, afterInstall, log) {
   for (const entry of entries) {
     guardDestination(root, entry.destination);
@@ -109,14 +126,14 @@ function applyPlan(root, entries, afterInstall, log) {
   try {
     for (const [index, entry] of changes.entries()) {
       entry.staged = path.join(stage, String(index));
-      if (entry.source) fs.cpSync(entry.source, entry.staged, { recursive: true });
+      if (entry.source) copyTree(entry.source, entry.staged);
       else fs.writeFileSync(entry.staged, entry.content, { mode: 0o600 });
       if (fs.statSync(entry.staged).isFile()) fs.chmodSync(entry.staged, 0o600);
       if (exists(entry.destination)) {
         entry.backup = path.join(backup, path.relative(root, entry.destination));
         guardDestination(root, entry.backup);
         fs.mkdirSync(path.dirname(entry.backup), { recursive: true, mode: 0o700 });
-        fs.cpSync(entry.destination, entry.backup, { recursive: true });
+        copyTree(entry.destination, entry.backup);
       }
     }
     for (const entry of changes) {
@@ -130,7 +147,7 @@ function applyPlan(root, entries, afterInstall, log) {
   } catch (error) {
     for (const entry of replaced.reverse()) {
       fs.rmSync(entry.destination, { recursive: true, force: true });
-      if (entry.backup) fs.cpSync(entry.backup, entry.destination, { recursive: true });
+      if (entry.backup) copyTree(entry.backup, entry.destination);
     }
     throw error;
   } finally {

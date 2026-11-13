@@ -6,7 +6,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test tests/english-localization.mjs tests/keyboard-regression.mjs tests/portable-installers.mjs tests/knowledge-base.mjs tests/knowledge-runtime.mjs tests/knowledge-enrichment.mjs tests/knowledge-expansion.mjs tests/tool-integrations.mjs tests/documentation.mjs",
+    "test": "node --test tests/english-localization.mjs tests/keyboard-regression.mjs tests/portable-installers.mjs tests/install-staging.mjs tests/knowledge-base.mjs tests/knowledge-runtime.mjs tests/knowledge-enrichment.mjs tests/knowledge-expansion.mjs tests/assessment-platform.mjs tests/tool-integrations.mjs tests/documentation.mjs",
     "knowledge:check": "node scripts/check-knowledge.mjs",
     "knowledge:normalize": "node scripts/normalize-knowledge.mjs --check",
     "knowledge:enrich": "node scripts/enrich-knowledge.mjs",
