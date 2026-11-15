@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "REA patch manifest",
+  "description": "Machine-readable record of the changes applied to a binary.",
+  "type": "object",
+  "required": ["target", "target_sha256", "patches"],
+  "additionalProperties": false,
+  "properties": {
+    "target": {
+      "type": "string",
+      "description": "Path of the file the manifest was written for."
+    },
+    "target_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 of the unmodified target. The applier refuses a mismatch."
+    },
+    "format": {
+      "type": "string",
+      "enum": ["PE32", "PE32+", "ELF32", "ELF64", "Mach-O", "Mach-O fat", "DEX", "IL", "APK", "IPA", "ASAR"]
+    },
+    "architecture": {
+      "type": "string",
+      "description": "x86, x86-64, arm, arm64, arm64e, or a comma-separated list for universal artefacts."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form note describing the change and its justification."
+    },
+    "patches": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "reason", "match", "replace", "offset"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Short stable identifier for the patch."
+          },
+          "reason": {
+            "type": "string",
+            "description": "What the patch changes and why."
+          },
+          "match": {
+            "type": "string",
+            "description": "Hex byte string expected at the offset, e.g. '0f 85 7b 00 00 00'."
+          },
+          "replace": {
+            "type": "string",
+            "description": "Hex byte string written in place of the match. Same length as the match."
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "File offset of the first byte."
+          },
+          "virtual_address": {
+            "type": "string",
+            "description": "Virtual address of the first byte, for readability."
+          },
+          "section": {
+            "type": "string",
+            "description": "Section containing the offset, when known."
+          }
+        }
+      }
+    }
+  }
+}

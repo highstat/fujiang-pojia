@@ -12,6 +12,9 @@ coverage/
 *.swp
 *~
 
+__pycache__/
+*.pyc
+
 .env
 .env.*
 !.env.example

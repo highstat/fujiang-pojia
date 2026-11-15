@@ -31,6 +31,10 @@ REA requires a compatible Node.js version: `^22.23.4 || ^24.22.1 || >=26.12.1`. 
 
 Once skills are registered, the AI can discover them in the available-skills catalog and read the relevant content on demand. Whether a skill is actually invoked depends on the session, model, tool configuration, and task context; a successful download does not mean every tool has been verified end to end.
 
+The repository also contains an independent [REA application-analysis corpus](rea-corpus.md)
+with 49 technique entries and 12 local agent skills. It is not the downloaded upstream REA
+library and is not automatically added to this plugin's skill provider or CVE catalogs.
+
 ## Automated workflow and fingerprint matching
 
 Context7 and REA integration details, connection status, authentication, offline opt-out, and host differences are documented in [tool integrations](tool-integrations.md). The shared instructions request the appropriate tool automatically but do not guarantee model behavior or imply that an engine is installed.

@@ -4,11 +4,13 @@
 
 ### English fork · Harness plugin · OpenCode adapter
 
-Custom prompt controls, an offline security knowledge base, and assessment-workflow tools for DeepSeek Harness. The OpenCode adapter installs the preserved source prompt plus additive tool-use guidance and knowledge as a selectable agent and skills.
+Custom prompt controls, offline security knowledge, and assessment-workflow tools for DeepSeek Harness. The OpenCode adapter installs the preserved source prompt plus additive guidance and knowledge as a selectable agent and skills. A separate `rea/` package provides application reverse-engineering knowledge and patching workflows.
 
 > **Fork version: 0.21.0**, based on upstream **0.20.13**. This version belongs to this fork; it is not a new release from the original author.
 
 [Installation](docs/installation.md) · [Harness features](docs/features.md) · [Context7 / REA](docs/tool-integrations.md) · [Screenshots](docs/screenshots/README.md) · [Changelog](CHANGELOG.md) · [Disclaimer](DISCLAIMER.md)
+
+[Application reverse engineering](docs/rea-corpus.md) · [REA corpus](rea/README.md) · [REA review and checks](docs/rea-review.md)
 
 ## What this fork includes
 
@@ -19,6 +21,8 @@ Custom prompt controls, an offline security knowledge base, and assessment-workf
 - **20 red-team/pentest and 27 blue-team/SOC playbooks**, covering identity, cloud, containers, CI/CD, detections and incident response.
 - Explicit verification fields and dated CISA KEV / FIRST EPSS metadata.
 - Context7 documentation MCP, REA artifact analysis, and task-specific tool-use guidance shared by both adapters.
+- A local assessment engine for Nuclei, ZAP alert imports, Semgrep and Trivy, with deduplication, an investigation graph and optional local-embedding knowledge search.
+- A **separate REA corpus: 49 technique entries in 10 domains, 12 agent skills and 12 application-analysis playbooks**. It is installed independently and does not replace the 300-entry plugin corpus.
 - Offline regression tests and a cross-platform CI configuration.
 
 The activation word in the bundled prompt is `fujiang` (case-insensitive). Review `prompt-custom.json` before installing or redistributing it: the installer copies your current local prompt, which may contain personal configuration.
@@ -32,6 +36,8 @@ The activation word in the bundled prompt is `fujiang` (case-insensitive). Revie
 | Settings UI and report browser | Native plugin panels | Not included |
 | Fingerprint matching and workflow tools | Harness runtime integration | Not included |
 | REA / AboutSecurity download controls | On-demand skill-library integration | Not included |
+| Assessment graph, report import and hybrid search | Native tools and loopback API | Optional bundled MCP with `--with-tools` |
+| Local `rea/` application-analysis skills | Separate corpus, not auto-registered | Separate `rea/install.sh` installation |
 | Updates | Re-run the Harness installer and restart Harness | Re-run the adapter to refresh its snapshot |
 
 By default, the adapter leaves API keys, permission rules, provider settings, default agents/models, and existing `opencode.json` / `opencode.jsonc` files unchanged. Optional `--with-tools` registration updates only MCP configuration as described below. Selecting the agent does not guarantee a particular response or bypass provider restrictions. Model requests may incur provider charges.
@@ -85,7 +91,7 @@ On Windows:
 .\scripts\installers\install-opencode.ps1 -Project 'D:\Projects\My Project'
 ```
 
-Replace the example path with your project. Omit the project option for the default global destination. Add `--with-tools` (PowerShell: `-WithTools`) to register Context7 and pinned REA MCP servers in that scope; starting OpenCode can then download REA via npm. See [tool setup and runtime requirements](docs/tool-integrations.md). Installation makes no model request. In OpenCode, connect your DeepSeek provider, then explicitly select the `fujiang` agent and an available model. See the [OpenCode guide](docs/installation.md#opencode-with-deepseek) for model selection, isolated configuration, backups, and removal.
+Replace the example path with your project. Omit the project option for the default global destination. Add `--with-tools` (PowerShell: `-WithTools`) to register Context7, pinned upstream REA and the bundled assessment MCP server; starting OpenCode can then download upstream REA via npm. This does not install the separate `rea/` corpus skills. See [tool setup](docs/tool-integrations.md). Installation makes no model request. Connect your DeepSeek provider and explicitly select the `fujiang` agent and a model; see the [OpenCode guide](docs/installation.md#opencode-with-deepseek).
 
 ## Knowledge base
 
@@ -101,6 +107,21 @@ Entries distinguish CVEs, implementation flaws, configuration issues, business l
 
 CISA KEV / FIRST EPSS fields are dated snapshots, not live intelligence. Refreshing them is an explicit maintenance action; installation, runtime lookups, and the default tests do not refresh public feeds.
 
+## Application reverse-engineering corpus
+
+[`rea/`](rea/README.md) contains application-analysis procedures for native formats, license/crypto logic, Windows native and .NET, Android, iOS, macOS, Linux ELF, Electron and anti-analysis. Playbooks combine these techniques; helpers cover byte patches, address mapping, Frida instrumentation and packaging/signing workflows.
+
+The local corpus and the **upstream REA MCP server are different components**. Neither installing skills nor passing schema checks proves an engine is available or an application procedure works end to end. All 49 entries currently retain `verified: false`.
+
+Use the corpus directly in this checkout, or preview a separate skills installation with Python 3.10+:
+
+```sh
+sh rea/install.sh --dry-run
+sh rea/install.sh '/path/to/project/.opencode/skills'
+```
+
+The installer copies the skills and their shared references, backs up replacements and rolls back failed updates. It does not change MCP, models, permissions or engine installations. See the [corpus guide](docs/rea-corpus.md) for Windows, destinations, updates and verification limits.
+
 ## Repository layout
 
 ```text
@@ -115,7 +136,17 @@ fujiang-pojia/
 ├── scripts/                  Installation and maintenance tools
 │   ├── installers/           Windows, macOS and Linux launchers
 │   ├── install.mjs           Shared portable installation engine
+│   ├── assessment.mjs        Local assessment CLI and stdio MCP server
 │   └── *knowledge.mjs        Knowledge checks, normalization and enrichment
+├── rea/                      Reverse engineering and patching corpus (self-contained)
+│   ├── knowledge/            49 technique entries across 10 domains
+│   ├── skills/               12 agent skills for routing and execution
+│   ├── playbooks/            12 end-to-end missions per platform
+│   ├── scripts/              Patchers, Frida agents, build and sign chains
+│   ├── templates/            Manifest schema, patch report and working notes
+│   ├── references/           Tool matrix and authoring guide
+│   ├── tests/                Offline helper and installer regressions
+│   └── install.sh            Separate skills installer; Python 3.10+ required
 ├── tests/                    Automated checks and manual keyboard fixtures
 ├── docs/                     Installation, features, activation note, screenshots
 └── .github/workflows/        Cross-platform test configuration
@@ -133,11 +164,13 @@ npm run knowledge:check
 npm run knowledge:normalize
 ```
 
+For the independent REA package, additionally run `npm run test:rea` with Python 3.10+ and Node.js 20+. It runs offline helper/API-mock regressions, strict corpus validation and a non-writing metadata check. These are not real Frida injections, app-signing tests or live license-target tests.
+
 These checks validate English localization, keyboard behavior, installer fixtures, knowledge metadata and runtime behavior, and documentation links. They do not execute PoCs or make model requests. The optional native OpenCode discovery test is opt-in; the default installer checks use isolated temporary directories and fake DSH commands.
 
 `npm run knowledge:enrich` explicitly contacts CISA and FIRST and reports available metadata changes without writing files. Consult the [maintenance guide](plugin/knowledge/CONTRIBUTING.md) before applying an update.
 
-Run `npm run test:windows` on Windows for the PowerShell installer tests. CI is configured for Node.js 20 and 22 on Linux, macOS, and Windows; configuration alone does not establish that remote checks have passed. Manual browser fixtures are documented in the [verification guide](docs/installation.md#verification) and are excluded from `npm test`.
+Run `npm run test:windows` on Windows for the PowerShell installer tests. CI is configured for Node.js 20, 22 and 24 on Linux, macOS, and Windows; configuration alone does not establish remote results. Manual browser fixtures are documented in the [verification guide](docs/installation.md#verification) and are excluded from `npm test`.
 
 ## Screenshots
 

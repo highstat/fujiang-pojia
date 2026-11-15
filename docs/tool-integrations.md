@@ -6,6 +6,12 @@ The integration adds actual MCP connections and a separate tool-use instruction 
 
 ## How tools are selected
 
+The local [`rea/` corpus](rea-corpus.md) is a separate knowledge/skills package, not the
+upstream MCP server described here. Main `--with-tools` installation does not copy its 12
+skills; its own installer packages them with their supporting resources. Neither path installs
+native engines. The main OpenCode tools option also registers `fujiang_assessment` and copies
+its local runtime; the manual two-server example below shows only the external connections.
+
 - Context7 is requested automatically for library, framework, SDK, API, setup, configuration, and version-specific documentation. The agent resolves a library ID, then queries the relevant documentation. Relevant results can be reused within a task.
 - REA is requested for supplied binaries, packages, Electron/ASAR applications, firmware, decompilation, and requested runtime reverse-engineering evidence. A complete source repository does not need a token REA call just to satisfy an instruction.
 - The agent uses the tools actually exposed by the host. It reports missing connections, rate limits, and engines rather than inventing tool results or repeatedly running setup.

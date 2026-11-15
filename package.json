@@ -10,6 +10,7 @@
     "knowledge:check": "node scripts/check-knowledge.mjs",
     "knowledge:normalize": "node scripts/normalize-knowledge.mjs --check",
     "knowledge:enrich": "node scripts/enrich-knowledge.mjs",
+    "test:rea": "python3 -B -m unittest discover -s rea/tests -p test_*.py && node --test rea/tests/runtime.mjs && python3 -B rea/scripts/check-knowledge.py --strict && python3 -B rea/scripts/normalize-knowledge.py --check",
     "test:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File tests/install-paths.ps1"
   }
 }

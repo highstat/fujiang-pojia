@@ -159,6 +159,14 @@ Re-run the same installer to update. Files that already match are left alone. Be
 
 To undo an update, close OpenCode and restore the affected paths from that backup. To remove a fresh install, remove only `agents/fujiang.md` and the eleven `skills/kb-*` directories installed by this repository; do not delete the whole OpenCode configuration directory. If a same-named skill existed before installation, restore its backup instead of deleting it.
 
+## Separate application-analysis skills
+
+The top-level [`rea/`](../rea/README.md) package is independent of both main installers. It is
+not copied into the plugin's CVE categories and does not install upstream REA MCP. Preview its
+Python 3.10+ installer with `sh rea/install.sh --dry-run`; select a project-local skills path
+explicitly when installing. See the [corpus guide](rea-corpus.md) for Windows, shared resource
+packaging, backups, rollback and removal.
+
 ## Verification
 
 Run from the repository root:
@@ -171,9 +179,9 @@ npm run knowledge:normalize
 
 The portable tests use isolated temporary directories and fake DSH commands. They cover prompt/content identity, model frontmatter, project/global destinations, dry-run, idempotent updates, backups, symlink protection, process protection, literal path arguments, and rollback after failed registration. Unix-specific cases are skipped on Windows. Run the existing `tests/install-paths.ps1` separately on Windows for the original Harness installer.
 
-These tests do not perform a live model request, execute PoCs, or prove compatibility with every host release.
+These tests do not perform a live model request, execute PoCs, or prove compatibility with every host release. Run `npm run test:rea` separately for the local REA helper and corpus checks; it requires Python 3.10+ as well as Node.js.
 
-The default suite includes knowledge schema/catalog/enrichment regressions. `tests/keyboard-browser.mjs` is a manual browser-fixture server, not an automated test to include in `node --test`; `tests/keyboard-harness.mjs` is its shared helper. Run `npm run test:windows` separately on Windows for the PowerShell installer suite. CI is configured for Node.js 20 and 22 on Linux, macOS, and Windows; a workflow definition does not itself prove those remote runs have passed.
+The default suite includes knowledge schema/catalog/enrichment regressions. `tests/keyboard-browser.mjs` is a manual browser-fixture server, not an automated test to include in `node --test`; `tests/keyboard-harness.mjs` is its shared helper. Run `npm run test:windows` separately on Windows for the PowerShell installer suite. CI is configured for Node.js 20, 22 and 24 on Linux, macOS, and Windows; a workflow definition does not itself prove those remote runs have passed.
 
 To additionally check agent discovery, source-prompt preservation and the additive guidance using an installed OpenCode 2 binary, opt in to the isolated native test:
 

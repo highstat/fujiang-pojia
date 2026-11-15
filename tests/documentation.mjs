@@ -8,7 +8,8 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const documents = ['README.md', 'CHANGELOG.md', 'DISCLAIMER.md', 'docs/installation.md',
   'docs/features.md', 'docs/screenshots/README.md', 'scripts/README.md', 'scripts/installers/README.md',
   'docs/knowledge-expansion.md', 'docs/tool-integrations.md', 'plugin/knowledge/README.md', 'plugin/knowledge/SCHEMA.md',
-  'plugin/knowledge/CONTRIBUTING.md', 'plugin/knowledge/CHANGELOG.md'];
+  'plugin/knowledge/CONTRIBUTING.md', 'plugin/knowledge/CHANGELOG.md', 'docs/rea-corpus.md',
+  'docs/rea-review.md', 'rea/README.md', 'rea/knowledge/SCHEMA.md', 'rea/knowledge/SKILL.md', 'rea/playbooks/README.md'];
 
 test('documentation links and local images point at existing files', () => {
   for (const document of documents) {

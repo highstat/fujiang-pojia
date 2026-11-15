@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **REA corpus**: Added independent `rea/` knowledge with 49 technique entries across 10 domains, 12 agent skills, 12 application-analysis playbooks, platform helpers, templates and an authoring guide. It does not replace the plugin's 300-entry corpus or install upstream REA MCP. All technique entries retain `verified: false`.
+- **REA installation and routing**: Replaced the Bash-only `sh` entry point with a POSIX launcher and Python installer. Skills include a shared resource snapshot, relocatable links, backups outside skill discovery, rollback, dry-run and symlink/source protections. Shortened agent instructions to route to canonical procedures instead of duplicating contradictory examples.
+- **REA correctness**: Fixed manifest/preimage guards, no-overwrite output and executable-mode preservation, PE VA/RVA and file-backed mappings, ELF endianness, Mach-O CPU detection, branch scanning and boundary handling. Corrected reviewed AArch64, smali, .NET, Frida and ELF examples, bounded capture reads, fixed interposer varargs, and improved nested signing and APK alignment/password handling.
+- **REA checks and docs**: Added synthetic helper regressions and Frida API mocks, strict metadata/skill/link/fence validation, non-writing normalization checks, corpus installation guidance and a review with explicit live-testing limits. Tool-version tables are reference targets, not proof of installed engines or current latest releases. Run `npm run test:rea` separately from the dependency-free Node suite.
+
 ## 0.21.0 (2026-11-13)
 
 - **Assessment platform**: Added a local assessment engine with bounded runner, ZAP alert collector, graph/plan engine, MCP protocol endpoints, and native Harness descriptors.
