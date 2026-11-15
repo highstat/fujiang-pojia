@@ -61,12 +61,14 @@ def install(target: Path, dry_run: bool = False) -> list[str]:
         for skill in skills:
             copy_tree(skill, stage / skill.name)
             entry = stage / skill.name / "SKILL.md"
-            entry.write_text(entry.read_text(encoding="utf-8").replace("../../", "../rea-knowledge-base/references/"), encoding="utf-8")
+            text = entry.read_text(encoding="utf-8").replace("../../", "../rea-knowledge-base/references/")
+            text += "\n## Required working agreement\n\nBefore acting, read [Agent workflow](../rea-knowledge-base/references/references/agent-workflow.md), then the relevant resources above. Resolve links from this SKILL.md, not the current directory. Check prerequisites and versions before running examples; verify the result and report skipped checks.\n"
+            entry.write_text(text, encoding="utf-8")
         resources = stage / "rea-knowledge-base" / "references"
         resources.mkdir()
         for name in ["knowledge", "playbooks", "scripts", "templates", "references"]:
             copy_tree(ROOT / name, resources / name)
-        (resources / "README.md").write_text("# Installed REA resources\n\n[Knowledge](knowledge/SKILL.md) · [Schema](knowledge/SCHEMA.md) · [Playbooks](playbooks/README.md) · [Tools](references/tool-matrix.md)\n\nThis is an offline snapshot, not an MCP server or engine installation.\n", encoding="utf-8")
+        (resources / "README.md").write_text("# Installed REA resources\n\n[Agent workflow](references/agent-workflow.md) · [Knowledge](knowledge/SKILL.md) · [Schema](knowledge/SCHEMA.md) · [Playbooks](playbooks/README.md) · [Tools](references/tool-matrix.md)\n\nRead the workflow first, then the relevant procedure and verification criteria. This is an offline snapshot, not an MCP server or engine installation.\n", encoding="utf-8")
         for name in names:
             destination = target / name
             saved = None
@@ -87,6 +89,7 @@ def install(target: Path, dry_run: bool = False) -> list[str]:
     finally:
         shutil.rmtree(stage)
     print(f"Installed {len(names)} skills with shared resources in {target}.")
+    print("Each installed skill links to the documentation-first workflow; model adherence is not guaranteed.")
     if backup.exists():
         print(f"Previous versions saved in {backup}.")
     print("Restart the host and verify discovery. MCP servers and analysis engines were not changed.")

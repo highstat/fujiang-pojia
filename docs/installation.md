@@ -86,6 +86,12 @@ It installs:
 
 - `agents/fujiang.md`: a primary agent containing the byte-preserved current `text` from `prompt-custom.json`, followed by a separate Context7/REA tool-use section.
 - `skills/kb-*/`: all eleven categories and all 300 supporting knowledge documents, copied without rewriting their contents.
+- `fujiang-docs/`: the [agent workflow](../rea/references/agent-workflow.md) and knowledge schema. The generated agent links to this offline snapshot and is instructed to read it before starting work, then load only relevant skill resources.
+
+The additive guidance now covers reading project instructions, checking prerequisites and versions,
+small reversible changes, validation and reporting skipped checks. Re-run the same installer and
+restart the host to refresh an existing agent. Backups and dry-run apply to these documents too;
+no model is run during installation and instruction adherence cannot be guaranteed.
 
 The adapter does **not** port Harness settings tabs, prompt-card switching, its HTTP routes, `kb_match` / `campaign_upsert` / `finding_upsert` / `pipeline_next` tools, skill downloaders, or automatic task continuation. Any references to those Harness-only facilities in the preserved text remain references, not working OpenCode integrations. Ordinary OpenCode file/skill tools can load the copied knowledge documents.
 

@@ -221,8 +221,16 @@ export function installOpenCode(options, log = console.log) {
   if (options.model) metadata.push('model: ' + JSON.stringify(options.model));
   const entries = [{
     destination: path.join(root, 'agents/fujiang.md'),
-    content: metadata.join('\n') + '\n---\n\n' + effectivePrompt(configuration.text),
+    content: metadata.join('\n') + '\n---\n\n' + openCodeAgentPrompt(configuration.text),
   }];
+  for (const [source, name] of [
+    ['rea/references/agent-workflow.md', 'agent-workflow.md'],
+    ['plugin/knowledge/SCHEMA.md', 'knowledge-schema.md'],
+  ]) {
+    const filename = path.join(bundleRoot, source);
+    validateSource(filename);
+    entries.push({ source: filename, destination: path.join(root, 'fujiang-docs', name) });
+  }
   const knowledge = path.join(bundleRoot, 'plugin/knowledge');
   const skillNames = new Set();
   for (const category of fs.readdirSync(knowledge, { withFileTypes: true })) {
@@ -251,10 +259,20 @@ export function installOpenCode(options, log = console.log) {
   if (options.dryRun) { log('Dry run; no files changed.'); return; }
   applyPlan(root, entries, undefined, log);
   log('OpenCode adapter installed: agent fujiang and ' + skillNames.size + ' knowledge skills.');
+  log('Documentation-first workflow and knowledge schema installed in fujiang-docs; restart the host to refresh the agent.');
   log('Connect DeepSeek in OpenCode using /connect, then select fujiang and your DeepSeek model.');
   log(options.withTools ? 'MCP servers registered in opencode.json; no secret values, permissions, or defaults were written.'
     : 'No API keys, permissions, default agents, or opencode.json/jsonc files were changed. Use --with-tools to register MCP servers.');
   log('Harness UI, campaign tools, and automatic continuation are not available in this adapter.');
+}
+
+export function openCodeAgentPrompt(text) {
+  return effectivePrompt(text) + '\n## Installed documentation\n\n'
+    + 'Before starting a task, read [Agent workflow](../fujiang-docs/agent-workflow.md). '
+    + 'Resolve this path relative to this agent file, not the current working directory. '
+    + 'Then read the relevant ../skills/kb-*/SKILL.md and its referenced entries. '
+    + 'For knowledge changes, read ../fujiang-docs/knowledge-schema.md. '
+    + 'Standalone rea-* skills require the separate REA installer; do not claim they are installed merely because REA MCP is configured.\n';
 }
 
 export function main(arguments_ = process.argv.slice(2)) {

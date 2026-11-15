@@ -23,6 +23,12 @@ encodings, exact command sequences and verification criteria so the reader can m
 "this app refuses to start" to "this file, this offset, this byte" without re-research.
 
 **49 knowledge entries across 10 domains, 12 agent skills and 12 playbooks.**
+Every installed skill links to the [documentation-first workflow](references/agent-workflow.md):
+read the applicable project instructions and relevant procedure before acting, check prerequisites,
+preserve original inputs and report verification actually performed. Re-run `sh rea/install.sh`
+from the repository root with the same destination to refresh existing skills and resources.
+This changes instructions, not a model's capabilities or guaranteed behavior.
+
 The 15 files under `scripts/` include platform helpers, Frida agents, a C interposition
 template, validators and the skill installer. Not every file is a standalone program:
 Frida agents need the matching runtime and the C template must be compiled.

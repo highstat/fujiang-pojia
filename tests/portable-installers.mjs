@@ -5,9 +5,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { parseOptions, resolveDsh } from '../scripts/install.mjs';
+import { parseOptions, resolveDsh, openCodeAgentPrompt } from '../scripts/install.mjs';
 import { KNOWLEDGE_CATEGORIES, parseKnowledgeDocument } from '../plugin/lib/knowledge-schema.js';
-import { effectivePrompt } from '../plugin/lib/tool-integrations.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const installer = path.join(root, 'scripts/install.mjs');
@@ -85,7 +84,12 @@ test('OpenCode preserves the source prompt plus tool guidance and all knowledge 
   successful(result);
   const agent = fs.readFileSync(path.join(destination, 'agents/fujiang.md'), 'utf8');
   const marker = '\n---\n\n';
-  assert.equal(agent.slice(agent.indexOf(marker) + marker.length), effectivePrompt(JSON.parse(fs.readFileSync(path.join(root, 'prompt-custom.json'))).text));
+  assert.equal(agent.slice(agent.indexOf(marker) + marker.length), openCodeAgentPrompt(JSON.parse(fs.readFileSync(path.join(root, 'prompt-custom.json'))).text));
+  const workflow = path.resolve(path.dirname(path.join(destination, 'agents/fujiang.md')), '../fujiang-docs/agent-workflow.md');
+  assert.deepEqual(fs.readFileSync(workflow), fs.readFileSync(path.join(root, 'rea/references/agent-workflow.md')));
+  assert.deepEqual(fs.readFileSync(path.join(destination, 'fujiang-docs/knowledge-schema.md')),
+    fs.readFileSync(path.join(root, 'plugin/knowledge/SCHEMA.md')));
+  assert.match(agent, /Before starting a task, read \[Agent workflow\]/);
   assert.match(agent, /^model: "deepseek\/example"$/m);
   assert.doesNotMatch(agent.slice(0, agent.indexOf(marker)), /permissions?:|tools:/);
   assert.equal(fs.readFileSync(path.join(destination, 'opencode.jsonc'), 'utf8'), originalConfig);
@@ -107,6 +111,7 @@ test('OpenCode project installs are local and inherit model selection unless exp
   successful(run(['opencode', '--project', project], directory));
   const agent = fs.readFileSync(path.join(project, '.opencode/agents/fujiang.md'), 'utf8');
   assert.doesNotMatch(agent.split('\n---\n')[0], /^model:/m);
+  assert.ok(fs.existsSync(path.join(project, '.opencode/fujiang-docs/agent-workflow.md')));
   assert.equal(fs.existsSync(path.join(directory, '.opencode')), false);
 });
 
@@ -127,11 +132,14 @@ test('OpenCode updates back up existing files, preserve other agents, and are id
   fs.mkdirSync(path.join(destination, 'agents'), { recursive: true });
   fs.writeFileSync(path.join(destination, 'agents/fujiang.md'), 'previous custom agent');
   fs.writeFileSync(path.join(destination, 'agents/reviewer.md'), 'unrelated agent');
+  fs.mkdirSync(path.join(destination, 'fujiang-docs'));
+  fs.writeFileSync(path.join(destination, 'fujiang-docs/agent-workflow.md'), 'previous workflow');
   successful(run(['opencode', '--config-dir', destination], directory));
   const backups = path.join(destination, 'fujiang-backups');
   const names = fs.readdirSync(backups);
   assert.equal(names.length, 1);
   assert.equal(fs.readFileSync(path.join(backups, names[0], 'agents/fujiang.md'), 'utf8'), 'previous custom agent');
+  assert.equal(fs.readFileSync(path.join(backups, names[0], 'fujiang-docs/agent-workflow.md'), 'utf8'), 'previous workflow');
   assert.equal(fs.readFileSync(path.join(destination, 'agents/reviewer.md'), 'utf8'), 'unrelated agent');
   const repeated = run(['opencode', '--config-dir', destination], directory);
   successful(repeated);
@@ -151,6 +159,21 @@ test('OpenCode refuses destination directory symlinks without changing their tar
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /symbolic link/);
   assert.deepEqual(fs.readdirSync(outside), []);
+});
+
+test('OpenCode refuses a documentation symlink before writing the agent or skills', { skip: !unix }, (context) => {
+  const directory = fixture(context);
+  const destination = path.join(directory, 'config');
+  const outside = path.join(directory, 'outside');
+  fs.mkdirSync(destination);
+  fs.mkdirSync(outside);
+  fs.symlinkSync(outside, path.join(destination, 'fujiang-docs'));
+  const result = run(['opencode', '--config-dir', destination], directory);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /symbolic link/);
+  assert.deepEqual(fs.readdirSync(outside), []);
+  assert.equal(fs.existsSync(path.join(destination, 'agents')), false);
+  assert.equal(fs.existsSync(path.join(destination, 'skills')), false);
 });
 
 test('Harness resolves explicit macOS apps and rejects invalid explicit paths instead of falling back', { skip: !unix }, (context) => {
@@ -240,5 +263,5 @@ test('native OpenCode discovers the primary agent with source prompt and additiv
   const agent = JSON.parse(result.stdout).find((entry) => entry.id === 'fujiang');
   assert.ok(agent, 'OpenCode must discover fujiang');
   assert.equal(agent.mode, 'primary');
-  assert.equal(agent.system, effectivePrompt(JSON.parse(fs.readFileSync(path.join(root, 'prompt-custom.json'))).text).trimEnd());
+  assert.equal(agent.system, openCodeAgentPrompt(JSON.parse(fs.readFileSync(path.join(root, 'prompt-custom.json'))).text).trimEnd());
 });

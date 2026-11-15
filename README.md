@@ -21,6 +21,7 @@ Custom prompt controls, offline security knowledge, and assessment-workflow tool
 - **20 red-team/pentest and 27 blue-team/SOC playbooks**, covering identity, cloud, containers, CI/CD, detections and incident response.
 - Explicit verification fields and dated CISA KEV / FIRST EPSS metadata.
 - Context7 documentation MCP, REA artifact analysis, and task-specific tool-use guidance shared by both adapters.
+- Documentation-first agent workflow: read relevant project/skill instructions, check prerequisites, make reversible changes and report actual verification. Installers refresh these instructions; they do not guarantee model compliance.
 - A local assessment engine for Nuclei, ZAP alert imports, Semgrep and Trivy, with deduplication, an investigation graph and optional local-embedding knowledge search.
 - A **separate REA corpus: 49 technique entries in 10 domains, 12 agent skills and 12 application-analysis playbooks**. It is installed independently and does not replace the 300-entry plugin corpus.
 - Offline regression tests and a cross-platform CI configuration.

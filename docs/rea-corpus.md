@@ -19,6 +19,7 @@ does not establish readiness of the others. The main installer does not automati
 - [Knowledge index](../rea/knowledge/SKILL.md): native-core, license-crypto, windows-native,
   windows-dotnet, android, ios, macos, linux-elf, electron-js and anti-analysis.
 - [Agent routing skill](../rea/skills/rea-knowledge-base/SKILL.md): select a platform or technique.
+- [Agent workflow](../rea/references/agent-workflow.md): read relevant documentation first, check prerequisites, preserve inputs and distinguish local checks from live verification. Each installed skill links to the shared copy.
 - [Playbooks](../rea/playbooks/README.md): ordered target-to-verification workflows.
 - [Manifest schema](../rea/templates/patch-manifest.schema.json), [patch report](../rea/templates/patch-report.md)
   and [working notes](../rea/templates/working-notes.md): reproducible artifact records.

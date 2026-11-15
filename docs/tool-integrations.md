@@ -6,6 +6,12 @@ The integration adds actual MCP connections and a separate tool-use instruction 
 
 ## How tools are selected
 
+The shared policy first requires reading applicable project instructions and relevant skill
+documentation, checking prerequisites, keeping changes reversible and reporting actual validation.
+The OpenCode adapter also installs and links an offline [agent workflow](../rea/references/agent-workflow.md).
+Harness receives the shared policy through the plugin; the standalone REA installer links the
+workflow from all 12 installed skills. None of these instructions guarantees model compliance.
+
 The local [`rea/` corpus](rea-corpus.md) is a separate knowledge/skills package, not the
 upstream MCP server described here. Main `--with-tools` installation does not copy its 12
 skills; its own installer packages them with their supporting resources. Neither path installs

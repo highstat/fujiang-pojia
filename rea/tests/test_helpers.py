@@ -152,12 +152,19 @@ class HelperTests(unittest.TestCase):
         self.assertFalse(target.exists())
         names = install(target)
         self.assertEqual(len(names), 12)
+        workflow = target / "rea-knowledge-base" / "references" / "references" / "agent-workflow.md"
+        self.assertEqual(workflow.read_bytes(), (ROOT / "references" / "agent-workflow.md").read_bytes())
+        for name in names:
+            text = (target / name / "SKILL.md").read_text(encoding="utf-8")
+            self.assertEqual(text.count("## Required working agreement"), 1)
+            self.assertIn("[Agent workflow](../rea-knowledge-base/references/references/agent-workflow.md)", text)
         check = helper("check-knowledge.py")["check_document"]
         for path in target.rglob("*.md"):
             self.assertEqual(check(path), [], str(path))
         original = target / names[0] / "SKILL.md"
         original.write_text("user customization")
         install(target)
+        self.assertEqual((target / names[0] / "SKILL.md").read_text(encoding="utf-8").count("## Required working agreement"), 1)
         self.assertTrue(any(path.read_text() == "user customization" for path in (target.parent / "fujiang-rea-backups").glob("*/*/SKILL.md")))
 
     def test_installer_rejects_source_destination_and_symlinks(self):

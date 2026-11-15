@@ -51,6 +51,11 @@ test('tool guidance is strictly additive and task-specific, not a source prompt 
   assert.match(TOOL_USE_POLICY, /resolve-library-id[\s\S]*query-docs/);
   assert.match(TOOL_USE_POLICY, /Ordinary work on a complete source repository does not require/);
   assert.match(TOOL_USE_POLICY, /Never claim a tool ran/);
+  assert.match(TOOL_USE_POLICY, /Before acting, read[\s\S]*AGENTS\.md/);
+  assert.match(TOOL_USE_POLICY, /prerequisites, tool versions and verification criteria/);
+  assert.match(TOOL_USE_POLICY, /run the narrowest relevant validation/);
+  assert.match(TOOL_USE_POLICY, /skipped checks and remaining uncertainty/);
+  assert.match(TOOL_USE_POLICY, /not the entire corpus/);
 });
 
 test('MCP registration is an explicit OpenCode installer option', () => {
